@@ -2,6 +2,7 @@
 \usepackage{multicol}
 \usepackage[hmarginratio=1:1, top=32mm, columnsep=20pt]{geometry}
 \usepackage{amsmath}
+\usepackage{natbib}
 
 \author{Sam Helmich}
 \title{Board Game Recommendation}
@@ -109,5 +110,7 @@ The model fitting needs to be autonomous, so we need to algorithmically proceed 
 This follows the natural flow of data through the model, so this is the best method for finding parameter estimates.
 
 %\end{multicols}
+\bibliographystyle{asa}
+\bibliography{references}
 
 \end{document}
