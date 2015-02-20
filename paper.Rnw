@@ -52,6 +52,8 @@ We now have a very simple two step model that will allow us to predict ratings f
 
 \subsection{Model Fit}
 The specifics of the model follow very closely to those outlined in the Global Effects and knn sections of the BigChaos paper [need bib]. Here, we cover the specifics of both.
+
+Note for editing: I know this model is a mess at the moment, just getting the general ideas down on paper. 
 \subsubsection{Global Effects}
 The motivations for using the formulas that follow can be found in Scalable Collaborative Filtering with Jointly Derived Neighborhood Interpolation Weights (make this a bib reference). The general idea is to remove the global mean from all ratings to get a residual for each observation. We'll group these residuals by game, and then find an effect for that game. Subtracting this effect from the residual, we'll take those residuals and repeat the same for each user.
 
@@ -75,6 +77,14 @@ And we'll use the estimation method outlined in the paper (need ref) for each, a
 \end{align}
 \end{center}
 
+\subsection{Classifier Aggrigation}
+Independent of the global effects, we need to give each user a score in each classification category. We will use 4 types of categorical variables, which will yield (FIND OUT HOW MANY CLASSIFIER VARIABLES). To do this, we can either use the ratings themselves, or the residuals from the global effects process. Let $c_{u,j}$ be the categorical rating for user $u$ in category $j$. Additionally, for each game $i$, there exists a set of classifiers $C_i$ that describe the aspects of the game in things such as mechanics, game family, categories, and subdomains.  Then for each user, we take all of the categorical values for each user and normalize them, so they should all have mean 0 and standard deviation of 1 for each user. Then, within each category, the average rating is calculated. Now, if a user hasn't rated anything in this category we can assign them a score of 0 in that category (what should amount to an average rating). These serve dual purposes: Firstly, we can assess what sorts of games a user rates higher than average most of the time, and game they rate lower than average most of the time. This will allow the algorithm to not only recommend specific games that have a high predicted rating, but will also allow for the user to find categories or mechanics that they enjoy as well. The other purpose is that we now have a larger dataset to compare people than we might have had before, as we are guarantedd to have (FIND OUT HOW MANY CLASSIFIER VARIABLES) for every user.
+
+\subsection{k-nearest-neighbors}
+After we aggregate on the classifiers, we can then find correlations between all of the users. We will then take the $k$ nearest neighbors, where the distance is given by $\rho_{i,k}$, the correlation between the $i$ and $k$th users. In this algorithm, $k$ will be chosen by a crossvalidation procedure that will be done on a user-by-user basis, as determining a global value for $k$ would be far too computationally expensive. After the optimal $k$ is found, then for each game the $k$ nearest neighbors' (who have rated the game) rating's are averaged using a weighted mean, with the weights being equal to $\frac{2}{1 + \rho_{i,k}}$.
+
+\subsection{Back to Rating}
+After the k-nearest-neighbors step, we need to "rewind" from the global effects fitting process. For each game, we'll need to add on the specific user effect, the effect for each game, and the overall game mean. This will then yield a rating for each game for each player!
 
 \section{Implementation}
 
@@ -87,31 +97,6 @@ And we'll use the estimation method outlined in the paper (need ref) for each, a
 \section{Conclusion}
 
 
-
-
-
-
-%\begin{multicols}{2}
-\section{Data Management}
-
-\section{Model}
-Let $y_{ij}$ be the rating for the $i$\textsuperscript{th} player of the $j$\textsuperscript{th} game. We fit the model in two steps, first finding the global residual, and then using a k-means approach to estimation.
-\subsection{Global Residual}
-The goal of a global residual is to remove two logical biases: some games are naturally rater higher than othes, and certain players are more generous in their ratings than others. The global residual will be the result of removing these baises. Note that this process by itself can be used as a prediction technique, but more importantly, the residuals it generates can be used as the input to other prediction strategies to improve overall performance (as seen in the section where we evaluate the performance of the different strategies). The process for finding these residuals is identical to the method described by [that paper that i used from the netflix part].
-
-\subsection{Model Fitting}
-The model fitting needs to be autonomous, so we need to algorithmically proceed through the model fitting. We'll proceed as follows:
-
-\begin{enumerate}
-\item Update $\mathbf{\alpha}$
-  \begin{enumerate}
-  \item Update $\alpha_1$ - parameter for game means
-  \item Update $\alpha_2$ - parameter for player means
-  \end{enumerate}
-\item Update $k$ for k-means
-\end{enumerate}
-
-This follows the natural flow of data through the model, so this is the best method for finding parameter estimates.
 
 %\end{multicols}
 \bibliographystyle{asa}
