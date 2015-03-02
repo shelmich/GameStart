@@ -30,9 +30,11 @@ In this paper, we seek to build a system the will recommend board games to users
 
 For data, we turn to \url{boardgamegeek.com}, a website that holds information, ratings, and reviews for over 75,000 games. Users can create an account and then rate games they've played as well as keep an inventory of games they own. All of this information is accessable and scrapable, and will be the data that drives our analysis.
 
-There are two types of particular information that we will be interested in: user ratings of the games and characteristics about the game (referred to as classifiers in the modeling section). The characteristics we're interested in fall into these categories: 
+There are two types of particular information that we will be interested in: user ratings of the games and characteristics about the game (referred to as classifiers in the modeling section). The characteristics we're interested in fall into these categories as outlined in table~\ref{tab:categories} 
 
-\begin{center}
+\hh{Just to make this flow better - make the table below an actual table in the table environment. Give it a caption and refer to it in the text ... I've just implemented it for you}
+\begin{table}[ht]
+\centering
 \begin{tabular}{|l|c|}
 \hline
 Category &  This covers the broad categories a game\\
@@ -49,16 +51,20 @@ Subdomain & More general than Category, but loosely bins games\\
 & (ex.: Family Games, Strategy Games, etc.)\\
 \hline
 \end{tabular}
-\end{center}
+\caption{\label{tab:categories} Overview of the  relevant characteristics of board games considered in this project.}
+\end{table}
 
 The ratings for each game are on a scale from 1 to 10, with a score of 1 indicating a really bad game and a score of 10 being the best possible. Each of the ratings are paired with a unique user identification number as well as a game number. Combined with the classifiers data, we can provide very specific ratings for each individual user.
 
+\hh{Give an example of how the data that you have scraped looks like. This would be a good point to introduce a bit of the notation that you are using below, like the $y_{u,i}$. }
+
+\hh{Aren't you continuously scraping? You should mention this at this point, and also talk a bit about how you have implemented the scraping.}
 
 \section{Model}
 \subsection{Model Selection}
 To begin implementing such a model, we can look to two papers on one of the most famous recommender systems of all: Netflix. In 2006, Netflix offered a \$1 Million prize for a improvement on their algorithm for predicting user rating on movies they had not seen. In 2008, two teams: BigChaos and BellKor (the eventual winner), published papers on their methodology. In the end, they ended up taking something of a shotgun approach, using a linear blend of many different models to come up with a single super-model. 
 
-There are a few things that make sense to model first. Certain games are more popular than other games, and certain people will naturally be more or less generous than others in their ratings. These two effects are very important to measure, as the first will allow us to provide estimates for people that have rated no games (and therefore we know nothing about), and the second will allow us to fine tune estimates for people who have rated many games. We will implement these in the same way that BigChaos implemented the Global Effects model (page 6, BigChaos paper). While they implemented 14 steps, we will only use the 2, due to the complexity of the calculations required and the time with which it is practical to fit a model.
+There are a few things that make sense to model first. Certain games are more popular than other games, and certain people will naturally be more or less generous than others in their ratings. These two effects are very important to measure, as the first will allow us to provide estimates for people that have rated no games (and therefore we know nothing about), and the second will allow us to fine tune estimates for people who have rated many games. We will implement these in the same way that BigChaos implemented the Global Effects model (page 6, BigChaos paper \hh{which of the BigChaos papers are you refering to here, exactly? At some point you need to include the exact reference in the bib tex, but I'd just like to know for myself ...}). While they implemented 14 steps, we will only use the 2 \hh{which 2? you need to include a few more details here}, due to the complexity of the calculations required and the time with which it is practical to fit a model.
 
 After we fit the general effects, we wish to model the remaining residuals, ideally in some way that gives us informative numeric summaries about the individual users in the process. In addition, we'd also like to compare a users ratings to other users, and hopefully use the behavior of simiar users to predict new ratings for someone. A tempting first step is to, for a particular game, find other people who have rated that game who have rated games that you've rated. Then, you could find people who rated games similarly to you, and use their ratings of the new game as an estimate. This often doesnt work, as sometimes the number of people who have rated the same games as you can be relatively low, if not 0 (show a graph for this part).
 
@@ -71,6 +77,7 @@ We now have a very simple two step model that will allow us to predict ratings f
 The specifics of the model follow very closely to those outlined in the Global Effects and knn sections of the BigChaos paper [need bib]. Here, we cover the specifics of both.
 
 Note for editing: I know this model is a mess at the moment, just getting the general ideas down on paper. 
+\hh{this is not nearly as messy as you make it out to be, but you need to make sure to define every little piece of notation as you, because otherwise your reader will be lost.}
 \subsubsection{Global Effects}
 The motivations for using the formulas that follow can be found in Scalable Collaborative Filtering with Jointly Derived Neighborhood Interpolation Weights (make this a bib reference). The general idea is to remove the global mean from all ratings to get a residual for each observation. We'll group these residuals by game, and then find an effect for that game. Subtracting this effect from the residual, we'll take those residuals and repeat the same for each user.
 
