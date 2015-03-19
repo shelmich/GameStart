@@ -4,6 +4,7 @@
 \usepackage{amsmath}
 \usepackage{natbib}
 \usepackage{url}
+\usepackage[normalem]{ulem}
 
 \newcommand{\hh}[1]{{\color{magenta} #1}}
 \newcommand{\sam}[1]{{\color{blue} #1}}
@@ -15,6 +16,10 @@
 
 \begin{document}
 \maketitle
+\begin{abstract}
+\hh{You'll need to include an abstract here}
+\end{abstract}
+
 
 <<loader, echo = FALSE>>=
 library(xtable)
@@ -34,9 +39,8 @@ In this paper, we seek to build a system the will recommend board games to users
 
 For data, we turn to \url{boardgamegeek.com}, a website that holds information, ratings, and reviews for over 75,000 games. Users can create an account and then rate games they've played as well as keep an inventory of games they own. All of this information is accessable and scrapable, and will be the data that drives our analysis.
 
-There are two types of particular information that we will be interested in: user ratings of the games and characteristics about the game (referred to as classifiers in the modeling section). The characteristics we're interested in fall into these categories as outlined in table~%\ref{tab:categories} 
+There are two types of particular information that we will be interested in: user ratings of the games and characteristics about the game (referred to as classifiers in the modeling section). The characteristics we're interested in fall into these categories as outlined in table~\ref{tab:categories}.
 
-\hh{Just to make this flow better - make the table below an actual table in the table environment. Give it a caption and refer to it in the text ... I've just implemented it for you}
 \begin{table}[ht]
 \centering
 \begin{tabular}{|l|c|}
@@ -58,8 +62,9 @@ Subdomain & More general than Category, but loosely bins games\\
 \caption{\label{tab:categories} Overview of the  relevant characteristics of board games considered in this project.}
 \end{table}
 
+\hh{Refer to table~\ref{tab:classifiers} somewhere in the text, add a label to the ratings table as well.}
 <<classifiers, echo = FALSE, results = 'asis'>>=
-xtable(paper_stuff$classifiers, caption = c("Classifiers Data, as seen in Database", "Classifiers Table"))
+print(xtable(paper_stuff$classifiers, caption = c("Example lines of classifiers data, as seen in Database", "Classifiers Table"), label="tab:classifiers"), include.rownames =FALSE )
 @
 
 
@@ -77,13 +82,23 @@ xtable(paper_stuff$player_key, caption = c("The Player Key relates important inf
 xtable(paper_stuff$game_key[,1:6], caption = c("The Game Key gives useful information about the game", "Game Key Table"))
 @
 
-Not all of the data was scraped before creating the applicaiton. Data for 6,088 games was scraped and stored across the four tables. The reason for not scraping all of the data is twofold. First of all, for those 6,088 games there are over 3 million unique ratings. If we were to expand it to all 75,756 games known to BoardGameGeek, then our data set would be crippilingly large for the small desktop I have to work on. Secondly, this will force us to implement a continuous data scraping procedure. Each time the person uses the app, all we have to do is make sure we have all of their current information correct. We look through our ratings and can check them with their userpage on BoardGameGeek. From this, we can revise old ratings or add new ones, as well as check to see that all of the games that they've rated are in our database!
+Not all of the data was scraped before creating the applicaiton. Data for 6,088 games was scraped and stored across the four tables. The reason for not scraping all of the data is twofold. First of all, for those 6,088 games there are over 3 million unique ratings. If we were to expand it to all 75,756 games known to BoardGameGeek, then our data set would be crippingly large for all but very high-powered machines. %the small desktop I have to work on. 
+\hh{Instead, we} %Secondly, this will force us to 
+implement a continuous data scraping procedure \hh{and update the recommender model dynamically:} Each time a person uses the app, %all we have to do is 
+we make sure to check that all of their current information is correct. We look through known ratings and  scrape  their userpage on BoardGameGeek. Based on this, we  revise old ratings and add new ones, as well as check to see that all of the games that this user has rated are included in the database!
 
 \section{Model}
 \subsection{Model Selection}
-To begin implementing such a model, we can look to two papers on one of the most famous recommender systems of all: Netflix. In 2006, Netflix offered a \$1 Million prize for a improvement on their algorithm for predicting user rating on movies they had not seen. In 2008, two teams: BigChaos and BellKor (the eventual winner), published papers on their methodology. In the end, they ended up taking something of a shotgun approach, using a linear blend of many different models to come up with a single super-model. 
+\hh{We base our implementation of a recommender system} %To begin implementing such a model, we can look to 
+on two papers  of on one the most famous recommender systems of all: Netflix. In 2006, Netflix offered a \$1 Million prize for an improvement on their algorithm for predicting user rating on movies they had not seen. In 2008, two teams: BigChaos and BellKor (the eventual winner), published papers on their methodology. In the end, these teams ended up taking something of a shotgun approach, using a linear blend of many different models to come up with a single super-model. 
 
-There are a few things that make sense to model first. Certain games are more popular than other games, and certain people will naturally be more or less generous than others in their ratings. These two effects are very important to measure, as the first will allow us to provide estimates for people that have rated no games (and therefore we know nothing about), and the second will allow us to fine tune estimates for people who have rated many games. We will implement these in a similar manner to the way that BigChaos implemented their Global Effects model \citep{bigchaos}. While they implemented 14 steps including Movie Effect, User Effect, and those variables crossed with variables like time since rating, average rating for the movie, production year, standard deviations, as well as others. From the RMSE of their probe set, the difference between using only user/movie effcts and using all 14 effects was only .02, a decrease of about 2\%. Noting this negligible increase in accuracy and recognizing my lack of significant computing resources, we will only use user and game effects.
+\hh{XXX What is the approach you are taking compared to Netflix? the same? similar? what is different? - One or two sentences here.}
+
+There are a few things that make sense to model first. Certain games are more popular than other games, and certain people will naturally be more or less generous than others in their ratings. These two effects are very important to measure, as the first will allow us to provide estimates for people that have rated no games (and therefore we know nothing about), and the second will allow us to fine tune estimates for people who have rated many games. We will implement these in a similar manner to the way that BigChaos implemented the Global Effects model \citep{bigchaos}.
+\hh{XXX the next clause needs an end to be a sentence :)}
+While they implemented 14 steps including Movie Effect, User Effect, and those variables crossed with variables like time since rating, average rating for the movie, production year, standard deviations, as well as others. 
+\hh{XXX explain RMSE; make sure in the next paragraph to always point out what is yours and what is netflix. You know all those distinctions, but for any other reader it is not that obvious.}
+From the RMSE of their probe set, the difference between using only user/movie effcts and using all 14 effects was only .02, a decrease of about 2\%. Noting this negligible increase in accuracy and recognizing my lack of significant computing resources, we will only use user and game effects.
 
 After we fit the general effects, we wish to model the remaining residuals, ideally in some way that gives us informative numeric summaries about the individual users in the process. In addition, we'd also like to compare a users ratings to other users, and hopefully use the behavior of simiar users to predict new ratings for someone. A tempting first step is to, for a particular game, find other people who have rated that game who have rated games that you've rated. Then, you could find people who rated games similarly to you, and use their ratings of the new game as an estimate. This often doesnt work, as sometimes the number of people who have rated the same games as you can be relatively low, if not 0 (show a graph for this part).
 
@@ -107,14 +122,25 @@ The global effects formual is
 r_{u,i} = \theta_u x_{u,i} + error
 \end{equation}
 
-Where for the first step, $r_{u,i}$ will be the rating from user $u$ for game $i$ and $x_{u,i}$ will be an indicator variable that is 1 if player $u$ has rated game $i$ and 0 otherwise. In the second step $r_{u,i}$ will be the residual from the first portion, the subscript on $\theta$ becomes $i$ and $x_{u,i}$ will be an indicator variable that is 1 if the rating is for game $i$ and 0 otherwise.
+\hh{XXX what do you mean by first step? If you need iterations, use $r_{u,i}^{(n)}$ or something similar. If there is an iteration, make sure to give a convergence criterion. 
 
-To get an estimate of $\theta$ at either step, we'll use the average of the nonzero values which are shunk by the fitting parameter $\alpha$ to avoid overfitting (motivation for using $\alpha$ in this manner can be found in \cite{scalecollab}). The sum is over either all ratings for user $u$ or all ratings for game $i$, depending on whether you're estimating $\theta_u$ or $\theta_i$. Either way, the structure is the same.
+Ah, ok - I see - I think what is going on is that you first get rid of the individuals' effects, and then of the games' effect. Write that out in two separate pieces. Give them appropriate names :)  - then you will have a much easier time describing what you are doing than in the paragraph below, where you are switching out us and is.
+}
+\hh{XXX: doesn't this error need to be indexed as well? could we call the error $\epsilon$ and make away with the text in the formula? }
+\hh{XXX: generally:  no future tense in the write up. The CC is in the here and now :)
+}
+
+Where for the first step, $r_{u,i}$ \sout{will be} \hh{is} the rating from user $u$ for game $i$ and $x_{u,i}$ will be an indicator variable that is 1 if player $u$ has rated game $i$ and 0 otherwise. In the second step $r_{u,i}$ will be the residual from the first portion, the subscript on $\theta$ becomes $i$ and $x_{u,i}$ will be an indicator variable that is 1 if the rating is for game $i$ and 0 otherwise.
+
+\hh{XXX it is $\theta_u$, not $\theta$. }
+\hh{XXX Why do you call $\alpha$ a fitting parameter and not a shrinking parameter?}
+
+To get an estimate of $\theta$ at either step, we'll use the average of the nonzero values which are shrunk by the fitting parameter $\alpha$ to avoid overfitting (motivation for using $\alpha$ in this manner can be found in \cite{scalecollab}). The sum is over either all ratings for user $u$ or all ratings for game $i$, depending on whether you're estimating $\theta_u$ or $\theta_i$. Either way, the structure is the same. \hh{Again, write this out in two separate formulae.}
 \begin{equation}
-\hat{\theta_u} = \frac{\sum r_{u,i}}{n_u + \alpha}
+\widehat{\theta_u} = \frac{\sum r_{u,i}}{n_u + \alpha}
 \end{equation}
 
-Noting that this can produce esimates that are above 10 and below 1, ratings that fall outside of $[1,10]$ are truncated to the closes interval endpoint.
+Noting that this can produce esimates that are above 10 and below 1, ratings that fall outside of $[1,10]$ are truncated to the closest interval endpoint.
 %  The general idea is to remove the global mean from all ratings to get a residual for each observation. We'll group these residuals by game, and then find an effect for that game. Subtracting this effect from the residual, we'll take those residuals and repeat the same for each user. The motivations for using the formulas that follow can be found in Scalable Collaborative Filtering with Jointly Derived Neighborhood Interpolation Weights (make this a bib reference, \hh{you still need to paraphrase the motivation here.}).
 % 
 % To begin $r_{u,i}$ will denote the rating by user $u$ for game $i$, where $y_{u,i}$ is a number between 1 and 10. Then, we have $$y_{u,i} = \mu_{global} + \mu_{i} + \mu_{u} + error$$
@@ -151,12 +177,15 @@ After the k-nearest-neighbors step, we need to "rewind" from the global effects 
 There are three parameters that the model relies on: The two $\alpha$ values that balance out biasedness in the global effects section, and the $k$ in the k-nearest neighbors portion of the algorithm. The $\alpha$'s will be done globally (that is, every individual will use the same values for $\alpha_1$ and $\alpha_2$), while the values for $k$ will be done locally (each user will have their own value of $k$). 
 
 \subsubsection{Optimizing $\alpha$}
-To optimize the $\alpha$ values, we'll take all of the ratings for all players and subtract off the mean of all of the ratings (this is the first step in the globalized residual process). This leaves us with three variables: The userid, the gameid and the residual. We'll randomly split all of the data into 10 equally sized buckets. We'll use each of these buckets as a test group, where we put the other buckets together, fit a model using a canidate value for $\alpha$, and then fit the values in the test group. From each test group, we'll then find the mean square error, and then average those together from all 10 groups. Taking the square root of that average, we can get the RMSE for each canidate value for $\alpha$. Finally, we'll proceed using the canidate value for $\alpha$ with the lowest RMSE. A graph of this process can be seen below, with the domain trunacted for easier visibility.
+To optimize the $\alpha$ values, we'll take all of the ratings for all players and subtract off the mean of all of the ratings (this is the first step in the globalized residual process). This leaves us with three variables: The userid, the gameid and the residual. We'll randomly split all of the data into 10 equally sized buckets. We'll use each of these buckets as a test group, where we put the other buckets together, fit a model using a canidate value for $\alpha$, and then fit the values in the test group. From each test group, we'll then find the mean square error, and then average those together from all 10 groups. Taking the square root of that average, we can get the RMSE for each canidate value for $\alpha$. Finally, we'll proceed using the canidate value for $\alpha$ with the lowest RMSE. A graph of this process can be seen \hh{in figure~\ref{fig:alpha}}, with the domain truncated for easier visibility.
 
+\begin{figure}
 <<game_alpha_optim, echo = F>>=
 load("game_graph")
 game_graph
 @
+\caption{\label{fig:alpha} You need a caption here - what is shown?}
+\end{figure}
 
 <<player_alpha_optim, echo = F>>=
 load("player_graph")
