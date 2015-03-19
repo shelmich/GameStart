@@ -148,7 +148,27 @@ After we aggregate on the classifiers, we can then find correlations between all
 After the k-nearest-neighbors step, we need to "rewind" from the global effects fitting process. For each game, we'll need to add on the specific user effect, the effect for each game, and the overall game mean. This will then yield a rating for each game for each player!
 
 \subsection{Parameter Optimization \& Selection}
-There are three parameters that the model relies on: The two $\alpha$ values that balance out biasedness in the global effects section, and the $k$ in the k-nearest neighbors portion of the algorithm. The $\alpha$'s will be done globally (that is, every individual will use the same values for $\alpha_1$ and $\alpha_2$), while the values for $k$ will be done locally (each user will have their own value of $k$). While the approaches for finding the optimal values for these parameters may be slightly different, the general implementation will be the same. We'll first begin by partitioning a subset of the data into 10 different sections (10 'folds'), and then choosing an appropriate parameter space for the parameter to be optimized. Ffor the alpha's, we'll choose values between 0 and 1000 (double check this), evenly spaced, and for $k$ we'll choose a positive integer. We'll then proceed fold by fold, using the other 9 folds to fit a model, and then using the data in current fold to check how the model works. Using root mean square error, we can then rank each of the possible parameter values in the parameter space, and the value with the lowest rmse will be the 'optimal' value for that parameter.
+There are three parameters that the model relies on: The two $\alpha$ values that balance out biasedness in the global effects section, and the $k$ in the k-nearest neighbors portion of the algorithm. The $\alpha$'s will be done globally (that is, every individual will use the same values for $\alpha_1$ and $\alpha_2$), while the values for $k$ will be done locally (each user will have their own value of $k$). 
+
+\subsubsection{Optimizing $\alpha$}
+To optimize the $\alpha$ values, we'll take all of the ratings for all players and subtract off the mean of all of the ratings (this is the first step in the globalized residual process). This leaves us with three variables: The userid, the gameid and the residual. We'll randomly split all of the data into 10 equally sized buckets. We'll use each of these buckets as a test group, where we put the other buckets together, fit a model using a canidate value for $\alpha$, and then fit the values in the test group. From each test group, we'll then find the mean square error, and then average those together from all 10 groups. Taking the square root of that average, we can get the RMSE for each canidate value for $\alpha$. Finally, we'll proceed using the canidate value for $\alpha$ with the lowest RMSE. A graph of this process can be seen below, with the domain trunacted for easier visibility.
+
+<<game_alpha_optim, echo = F>>=
+load("game_graph")
+game_graph
+@
+
+<<player_alpha_optim, echo = F>>=
+load("player_graph")
+player_graph
+@
+
+<<k_optim, echo = F>>=
+load("k_plot")
+k_plot
+@
+
+While the approaches for finding the optimal values for these parameters may be slightly different, the general implementation will be the same. We'll first begin by partitioning a subset of the data into 10 different sections (10 'folds'), and then choosing an appropriate parameter space for the parameter to be optimized. Ffor the alpha's, we'll choose values between 0 and 1000 (double check this), evenly spaced, and for $k$ we'll choose a positive integer. We'll then proceed fold by fold, using the other 9 folds to fit a model, and then using the data in current fold to check how the model works. Using root mean square error, we can then rank each of the possible parameter values in the parameter space, and the value with the lowest rmse will be the 'optimal' value for that parameter.
 
 \section{Technical Implementation}
 ** SCREENSHOTS NEEDED **
