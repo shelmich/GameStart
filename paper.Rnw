@@ -115,30 +115,46 @@ Note for editing: I know this model is a mess at the moment, just getting the ge
 \subsubsection{Global Effects}
 The general idea behind global effects is to account for the natural biases present in particular games or players. For example, we might have two players who both play and enjoy the same game the same amount. However, one person might give this game a score of 10 while the other gives it a score of 9. Despite their overall enjoyment being the same, perhaps the latter player just tends to be a harsher rater in general. The global effect for this person would then be lower than that of the much more cheery fellow who gave the game a 10. Similarly, this effect can be present for games due to any number of reasons.
 
-We'll estimate these effects one at a time using a heirarchical structure. After estimating the effect, we'll be left with a residual, which will be used as the response for the next level.
-The global effects formual is 
+We'll estimate these effects one at a time using a heirarchical structure. Define $r_{u,i}^{(1)}$ be the rating from user $u$ for game $i$. The first effect we'll fit is a global mean, which we'll denote with the parameter $\theta_g$, and we'll model the ratings using the following formula:
 
 \begin{equation}
-r_{u,i} = \theta_u x_{u,i} + error
+r_{u,i}^{(1)} = \theta_g + \epsilon_{u,i}^{(1)}
 \end{equation}
 
-\hh{XXX what do you mean by first step? If you need iterations, use $r_{u,i}^{(n)}$ or something similar. If there is an iteration, make sure to give a convergence criterion. 
+$\theta_g$ is estimated using a simple mean of the $r_{u,i}^{(1)}$'s. After removing a global mean, we'll model the global effect for each game using the residuals from the global mean step. For this purpose, define $r_{u,i}^{(2)} = \epsilon_{u,i}^{(1)}$, which we'll model using global effect for each game, denoted $\theta_i$. The residuals are then modeled using the following, where $x_i$ is an indicator varialbe that the residual belongs to game $i$:
 
-Ah, ok - I see - I think what is going on is that you first get rid of the individuals' effects, and then of the games' effect. Write that out in two separate pieces. Give them appropriate names :)  - then you will have a much easier time describing what you are doing than in the paragraph below, where you are switching out us and is.
-}
-\hh{XXX: doesn't this error need to be indexed as well? could we call the error $\epsilon$ and make away with the text in the formula? }
+\begin{equation}
+r_{u,i}^{(2)} = \theta_i x_{i} + \epsilon_{u,i}^{(2)}
+\end{equation}
+
+To estimate $\theta_i$, we want something that is like a mean, but also contains an offset to avoid overfitting. Following from \cite{scalecollab}, $\widehat{\theta}_{i}$ is estimated using the following, where $\alpha_{game}$ is a tuning parameter, and the sum is over all residuals for game $i$ and $n_{i}$ is the number of residuals for game $i$:
+
+\begin{equation}
+\widehat{\theta}_{i} = \frac{\sum r_{u,i}^{(2)}}{n_{i} + \alpha_{game}}
+\end{equation}
+
+The final step in the global effects stage is finding the global effect for each user denoted $\theta_{u}$. In a simillar manner to the game global effects, once again taking the residual from the previous step and model them. To proceed, let $r_{u,i}^{(3)} = \epsilon_{u,i}^{(2)}$, and those residuals are modeled using:
+
+\begin{equation}
+r_{u,i}^{(3)} = \theta_{u}x_u + \epsilon_{u,i}^{(3)}
+\end{equation}
+
+And again, $\theta_{u}$ is estimated with $\widehat{\theta}_{u}$, which is calculated with:
+
+\begin{equation}
+\widehat{\theta}_{u} = \frac{\sum r_{u,i}^{(2)}}{n_{i} + \alpha_{player}}
+\end{equation}
+
+Where $\alpha_{player}$ is a tuning parameter to prevent overfitting.
+
+
+
 \hh{XXX: generally:  no future tense in the write up. The CC is in the here and now :)
 }
 
-Where for the first step, $r_{u,i}$ \sout{will be} \hh{is} the rating from user $u$ for game $i$ and $x_{u,i}$ will be an indicator variable that is 1 if player $u$ has rated game $i$ and 0 otherwise. In the second step $r_{u,i}$ will be the residual from the first portion, the subscript on $\theta$ becomes $i$ and $x_{u,i}$ will be an indicator variable that is 1 if the rating is for game $i$ and 0 otherwise.
 
 \hh{XXX it is $\theta_u$, not $\theta$. }
 \hh{XXX Why do you call $\alpha$ a fitting parameter and not a shrinking parameter?}
-
-To get an estimate of $\theta$ at either step, we'll use the average of the nonzero values which are shrunk by the fitting parameter $\alpha$ to avoid overfitting (motivation for using $\alpha$ in this manner can be found in \cite{scalecollab}). The sum is over either all ratings for user $u$ or all ratings for game $i$, depending on whether you're estimating $\theta_u$ or $\theta_i$. Either way, the structure is the same. \hh{Again, write this out in two separate formulae.}
-\begin{equation}
-\widehat{\theta_u} = \frac{\sum r_{u,i}}{n_u + \alpha}
-\end{equation}
 
 Noting that this can produce esimates that are above 10 and below 1, ratings that fall outside of $[1,10]$ are truncated to the closest interval endpoint.
 %  The general idea is to remove the global mean from all ratings to get a residual for each observation. We'll group these residuals by game, and then find an effect for that game. Subtracting this effect from the residual, we'll take those residuals and repeat the same for each user. The motivations for using the formulas that follow can be found in Scalable Collaborative Filtering with Jointly Derived Neighborhood Interpolation Weights (make this a bib reference, \hh{you still need to paraphrase the motivation here.}).
@@ -165,39 +181,96 @@ Noting that this can produce esimates that are above 10 and below 1, ratings tha
 % \hh{something went wrong in the formula - what are you summing over?}
 
 \subsubsection{Classifier Aggregation}
-Independent of the global effects, we need to give each user a score in each classification category. We will use 4 types of categorical variables, which will yield (FIND OUT HOW MANY CLASSIFIER VARIABLES). To do this, we can either use the ratings themselves, or the residuals from the global effects process. Let $c_{u,j}$ be the categorical rating for user $u$ in category $j$. Additionally, for each game $i$, there exists a set of classifiers $C_i$ that describe the aspects of the game in things such as mechanics, game family, categories, and subdomains.  Then for each user, we take all of the categorical values for each user and normalize them, so they should all have mean 0 and standard deviation of 1 for each user. Then, within each category, the average rating is calculated. Now, if a user hasn't rated anything in this category we can assign them a score of 0 in that category (what should amount to an average rating). These serve dual purposes: Firstly, we can assess what sorts of games a user rates higher than average most of the time, and game they rate lower than average most of the time. This will allow the algorithm to not only recommend specific games that have a high predicted rating, but will also allow for the user to find categories or mechanics that they enjoy as well. The other purpose is that we now have a larger dataset to compare people than we might have had before, as we are guarantedd to have (FIND OUT HOW MANY CLASSIFIER VARIABLES) for every user.
+After finding the global effects for the games and the users, we're left with residuals for every rating that every user has made. These residuals represent the last of what differentiate the users based on their preferences for the nuances of each game. We need a way to quantify these nuances, and then attempt to model these residual so we can get a better understanding of each individual user. Each game in the dataset can be described by things like what mechanics it has, or what family of game it falls under, when it was published, etc. All in all, there are up to 1,851 different quantifiable ways that were chosed to descibe games. For example, the game Dragonmaster was published in 1981, has a playingtime of 30 minutes, is under the family "Animals: Dragons", falls under the categories "Card Game", "Fantasy Game", is in the subdomain "Strategy Games", uses the mechanic "Trick-taking", and seats 3 or 4 players. Each one of these will be treated as a classifier for the game.
+
+In order to model the remaining residuals, we'll give each player a score based on how they rated games with similar classifiers; that is, how did they rate games with the "Trick-taking" mechanic, or how did they rate "Card Games"?
+
+Define $C_{u,z}$ to the be the classifier score for user $u$ for classifier $z$ where $z$ is an index of the 1,851 classifiers. Then:
+
+\begin{equation}
+C_{u,z} = \frac{\sum \epsilon_{u,i \in z}^{(3)}}{n_{z}}
+\end{equation}
+
+where the sum is over all residuals that belong to a game that can be described by classifier $z$. For example, if the classifier was the mechanic "Trick-taking" and the user was $u = 3$, the classifier score would be the mean of all of the $\epsilon_{3,i}^{(3)}$ for \textit{all} games that the user has rated that have the "Trick-taking" mechanic. If its the case that a user has rated no games with a particular classifier, we'll leave it as an unobserved value. 
 
 \subsubsection{k-nearest-neighbors}
-After we aggregate on the classifiers, we can then find correlations between all of the users. We will then take the $k$ nearest neighbors, where the distance is given by $\rho_{i,k}$, the correlation between the $i$ and $k$th users. In this algorithm, $k$ will be chosen by a crossvalidation procedure that will be done on a user-by-user basis, as determining a global value for $k$ would be far too computationally expensive. After the optimal $k$ is found, then for each game the $k$ nearest neighbors' (who have rated the game) rating's are averaged using a weighted mean, with the weights being equal to $\frac{2}{1 + \rho_{i,k}}$.
+Now we have a few classifier values defined for each user who has rated at least one game. In order to create predictions for other games that the user hasn't played, we'll find the correlation between players based on their classifier values. For each pair of players, the correlation between them can be found by finding all of the classifiers that have scores for both players, and then finding the correlation between those values. To make sure that we don't find high correlations between players who only have very few classifier scores in common, we'll on consider a correlation between players if they have more than 6 common classifier scores.
+
+Now to generate an estimate for user $u$ for game $i$, we'll find all of the players who have a correlation value with user $u$ who have also rated game $i$. The rating for game $i$ is then the weighted average of the $k$ most highly correlated (or nearest) neighbors of user $u$.
+
+The weights for this will be $\frac{1}{1 + \rho_{u,k}}$ where $\rho_{u,k}$ is the correlation between user $u$ and user $k$. The number of neighbors to use $k$ will be determined by cross-validation on a user-to-user basis. In the end $z_{u,i}$ will be the k-nearest-neighbors estimate for user $u$ and game $i$, as given in the equation below (where $u_{[j]}$ is the user with the $j^{\text{th}}$ highest correlation between themselves and user $u$:
+
+\begin{equation}
+z_{u,i} = \frac{\sum_{j = 1}^{k} \epsilon_{u_{[j]},i}^{(3)} * \frac{1}{1 + \rho_{u,u_{[j]}}}}{\sum_{j = 1}^{k}\frac{1}{1 + \rho_{u,u_{[j]}}}}
+\end{equation}
 
 \subsubsection{Back to Rating}
-After the k-nearest-neighbors step, we need to "rewind" from the global effects fitting process. For each game, we'll need to add on the specific user effect, the effect for each game, and the overall game mean. This will then yield a rating for each game for each player!
+From what we've produced above, of the estimated rating for user $u$ and game $i$ is given by:
+
+\begin{equation}
+\widehat{r}_{u,i} = \widehat{\theta}_g + \widehat{\theta}_{i} + \widehat{\theta}_{u} + z_{u,i}
+\end{equation}
 
 \subsection{Parameter Optimization \& Selection}
-There are three parameters that the model relies on: The two $\alpha$ values that balance out biasedness in the global effects section, and the $k$ in the k-nearest neighbors portion of the algorithm. The $\alpha$'s will be done globally (that is, every individual will use the same values for $\alpha_1$ and $\alpha_2$), while the values for $k$ will be done locally (each user will have their own value of $k$). 
+There are three parameters that the model relies on: The two $\alpha$ values that balance out biasedness in the global effects section, and the $k$ in the k-nearest neighbors portion of the algorithm. The $\alpha$'s will be done globally (that is, every individual will use the same values for $\alpha_{game}$ and $\alpha_{player}$), while the values for $k$ will be done locally (each user will have their own value of $k$). 
 
 \subsubsection{Optimizing $\alpha$}
-To optimize the $\alpha$ values, we'll take all of the ratings for all players and subtract off the mean of all of the ratings (this is the first step in the globalized residual process). This leaves us with three variables: The userid, the gameid and the residual. We'll randomly split all of the data into 10 equally sized buckets. We'll use each of these buckets as a test group, where we put the other buckets together, fit a model using a canidate value for $\alpha$, and then fit the values in the test group. From each test group, we'll then find the mean square error, and then average those together from all 10 groups. Taking the square root of that average, we can get the RMSE for each canidate value for $\alpha$. Finally, we'll proceed using the canidate value for $\alpha$ with the lowest RMSE. A graph of this process can be seen \hh{in figure~\ref{fig:alpha}}, with the domain truncated for easier visibility.
+To optimize the $\alpha$ values, we'll follow the model fitting procedure up to the point in which the paramter is used, estimate the model parameter using a grid of possible values for the turning parameter, and then find which value for the tuning parameter yields the model parameter estimate which has the lowest root mean square error (RMSE). RMSE is calculated by finding the difference between the rating and the rating that is estimated using only the global effects parameter(s).
 
+The first $\alpha$ to be tuned is $\alpha_{game}$. The data is randomly divided into 10 separate sections of roughly equal size. Then for each of the 10 sections, we'll treat the section as a test set and the other 9 to use as a training set. $\widehat{\theta}_g$ is fit first, and then from a grid of $\alpha_{game}$ values (where $\alpha_{game} \in [1,10000]$), a value of $\widehat{\theta}_i$ is produced for each of the $\alpha_{game}$ in the grid. For each of the $\widehat{\theta}_i$ that are estimated, we'll use the section that wasn't in the training set, the RMSE is calculated by:
+\begin{equation}
+\text{RMSE} = \frac{ \sum r_{u,i}^{(1)} - (\theta_g + \theta_i)}{n}
+\end{equation}
+
+where we sum over all rated games in the test set, and $n$ is the number of ratings in the test set. The value of $\alpha_{game}$ that has the lowest RMSE will be used. in figure ~\ref{fig:gamealpha}, we see the optimal value for $\alpha_{game}$ sits in a nice trough, with the minimum at $\alpha_{game} = 1.802303$.
+
+\begin{center}
 \begin{figure}
-<<game_alpha_optim, echo = F>>=
+<<game_alpha_optim, echo = F, fig.width = 4, fig.height = 4 >>=
 load("game_graph")
 game_graph
 @
-\caption{\label{fig:alpha} You need a caption here - what is shown?}
+\caption{\label{fig:gamealpha} RMSE of candidate $\alpha_{game}$ values.}
 \end{figure}
+\end{center}
 
-<<player_alpha_optim, echo = F>>=
+After finding the optimal value for $\alpha_{game}$ we can move on to optimizing $\alpha_{player}$. Once again, the data will be divided randomly into approximately 10 equally sized sections, and each will be treated as an individual test set while the other 9 combined will serve as a training set. A grid of $\alpha_{player} \in  [1,10000]$ will be used to create a value for $\widehat{\theta}_{u}$, and for each of those values, we'll calculate the RMSE as below:
+
+\begin{equation}
+\text{RMSE} = \frac{ \sum r_{u,i}^{(1)} - (\theta_g + \theta_i + \theta_u)}{n}
+\end{equation}
+
+Once again, the value of $\alpha_{player}$ with the lowest RMSE will be the value used, which as can be seen in ~\ref{fig:playeralpha} is $\alpha_{player} = 2.022021$.
+\begin{figure}
+<<player_alpha_optim, echo = F, fig.width = 4, fig.height = 4>>=
 load("player_graph")
 player_graph
 @
+\caption{\label{fig:playeralpha} RMSE of candidate $\alpha_{player}$ values.}
+\end{figure}
 
+One may immediately notice that different $\alpha$ candidates have a larger effect on RMSE for players than they have for games. The reason for this is that there are far more ratings for each game than there are for each player. This results in less overfitting for each game and more overfitting for each player, as is seen in the histograms for the number of ratings for each game and player.
+
+\begin{figure}
+<<hists, echo = F, fig.width = 4, fig.height = 4>>=
+load("game_n_rats")
+load("plyr_n_rats")
+game_n_plot
+plyr_n_plot
+@
+\caption{\label{fig:ratn} Frequency of number of ratings for players and games.}
+\end{figure}
+
+
+\begin{figure}
 <<k_optim, echo = F>>=
 load("k_plot")
 k_plot
 @
+\caption{\label{fig:k}}
+\end{figure}
 
-While the approaches for finding the optimal values for these parameters may be slightly different, the general implementation will be the same. We'll first begin by partitioning a subset of the data into 10 different sections (10 'folds'), and then choosing an appropriate parameter space for the parameter to be optimized. Ffor the alpha's, we'll choose values between 0 and 1000 (double check this), evenly spaced, and for $k$ we'll choose a positive integer. We'll then proceed fold by fold, using the other 9 folds to fit a model, and then using the data in current fold to check how the model works. Using root mean square error, we can then rank each of the possible parameter values in the parameter space, and the value with the lowest rmse will be the 'optimal' value for that parameter.
+
 
 \section{Technical Implementation}
 ** SCREENSHOTS NEEDED **
