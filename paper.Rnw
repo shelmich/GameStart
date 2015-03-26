@@ -48,7 +48,7 @@ There are two types of particular information that we will be interested in: use
 Category &  This covers the broad categories a game\\
 & might fall into (ex.: Humor, Puzzle, Sports, etc.) \\
 \hline
-Family &  Some games a naturally part of a "family" \\
+Family &  Some games a naturally part of a ``family" \\
 &  that share a name or common element \\
 & (ex.: Animals:Bats, Ancient Wars Series, Hello Kitty)\\
 \hline
@@ -73,7 +73,7 @@ The ratings for each game are on a scale from 1 to 10, with a score of 1 indicat
 xtable(paper_stuff$ratings, caption = c("Ratings Data, as seen in Database", "Ratings Table"))
 @
 
-To keep the information as compact as possible, individual players and games are referred to by an ID number, which corresponds to a row in one of the key tables. These key tables contain information about the players and game that we don't necessarily need to include with each rating or classifier. This greatly reduces the size of the database needed to store and work with the information.
+To keep the information as compact as possible, individual players and games are referred to by an ID number, which corresponds to a row in one of the key tables. These key tables contain information about the players and game that we do not necessarily need to include with each rating or classifier. This greatly reduces the size of the database needed to store and work with the information.
 <<player_key, echo = FALSE, results = 'asis'>>=
 xtable(paper_stuff$player_key, caption = c("The Player Key relates important info about the individual to the userid", "Player Key Table"))
 @
@@ -98,20 +98,22 @@ There are a few things that make sense to model first. Certain games are more po
 \hh{XXX the next clause needs an end to be a sentence :)}
 While they implemented 14 steps including Movie Effect, User Effect, and those variables crossed with variables like time since rating, average rating for the movie, production year, standard deviations, as well as others. 
 \hh{XXX explain RMSE; make sure in the next paragraph to always point out what is yours and what is netflix. You know all those distinctions, but for any other reader it is not that obvious.}
-From the RMSE of their probe set, the difference between using only user/movie effcts and using all 14 effects was only .02, a decrease of about 2\%. Noting this negligible increase in accuracy and recognizing my lack of significant computing resources, we will only use user and game effects.
+From the RMSE of their probe set, the difference between using only user/movie effcts and using all 14 effects was only .02, a decrease of about 2\%. Noting this negligible increase in accuracy and recognizing my lack of significant computing resources, we will only use user and game effects. \hh{XXX What is your computing power? How much further could you go with (how much?) more? -- How much more accuracy would you hope for with more power? }
 
-After we fit the general effects, we wish to model the remaining residuals, ideally in some way that gives us informative numeric summaries about the individual users in the process. In addition, we'd also like to compare a users ratings to other users, and hopefully use the behavior of simiar users to predict new ratings for someone. A tempting first step is to, for a particular game, find other people who have rated that game who have rated games that you've rated. Then, you could find people who rated games similarly to you, and use their ratings of the new game as an estimate. This often doesnt work, as sometimes the number of people who have rated the same games as you can be relatively low, if not 0 (show a graph for this part).
+After we fit the general effects, we wish to model the remaining residuals, ideally in some way that gives us informative numeric summaries about the individual users in the process. In addition, we'd also like to compare a users ratings to other users, and hopefully use the behavior of simiar users to predict new ratings for someone. A tempting first step is to, for a particular game, find other people who have rated that game who have rated games that you've rated. Then, you could find people who rated games similarly to you, and use their ratings of the new game as an estimate. This often does not work, as sometimes the number of people who have rated the same games as you can be relatively low, if not 0 (show a graph for this part).
 
 To get around the problem of low crossover in game ratings, we turn to the characteristics of the games themselves. This kills two birds with one stone. We'll create, for each user, a rating for each game mechanic and genre. Then, since there are so many mechanics and genres of game, a player only needs to rate a small, albeit diverse set of games before we can correlate that player's habits with other players, even if they've never played any of the same games! Then we can use those to filter rating results, as we'll know what board game mechanics that a particular player will enjoy.
 
 We now have a very simple two step model that will allow us to predict ratings for new board games that a person may not have even played! Also, it allows us to rate games that nobody has played before: We can use the overall mean as a starting point, then for an individual player, we can adjust the rating based on their ratings of similar games from other genres.
 
 
-\subsection{Model Structure}
+\subsection{Model \hh{Sequence}}
 The specifics of the model follow very closely to those outlined in the Global Effects and knn sections of the BigChaos paper [need bib]. Here, we cover the specifics of both.
 
 Note for editing: I know this model is a mess at the moment, just getting the general ideas down on paper. 
-\hh{this is not nearly as messy as you make it out to be, but you need to make sure to define every little piece of notation as you, because otherwise your reader will be lost.}
+
+\hh{XXX Describe the sequential nature of the models in the next subsections here.}
+
 \subsubsection{Global Effects}
 The general idea behind global effects is to account for the natural biases present in particular games or players. For example, we might have two players who both play and enjoy the same game the same amount. However, one person might give this game a score of 10 while the other gives it a score of 9. Despite their overall enjoyment being the same, perhaps the latter player just tends to be a harsher rater in general. The global effect for this person would then be lower than that of the much more cheery fellow who gave the game a 10. Similarly, this effect can be present for games due to any number of reasons.
 
@@ -148,14 +150,6 @@ And again, $\theta_{u}$ is estimated with $\widehat{\theta}_{u}$, which is calcu
 Where $\alpha_{player}$ is a tuning parameter to prevent overfitting.
 
 
-
-\hh{XXX: generally:  no future tense in the write up. The CC is in the here and now :)
-}
-
-
-\hh{XXX it is $\theta_u$, not $\theta$. }
-\hh{XXX Why do you call $\alpha$ a fitting parameter and not a shrinking parameter?}
-
 Noting that this can produce esimates that are above 10 and below 1, ratings that fall outside of $[1,10]$ are truncated to the closest interval endpoint.
 %  The general idea is to remove the global mean from all ratings to get a residual for each observation. We'll group these residuals by game, and then find an effect for that game. Subtracting this effect from the residual, we'll take those residuals and repeat the same for each user. The motivations for using the formulas that follow can be found in Scalable Collaborative Filtering with Jointly Derived Neighborhood Interpolation Weights (make this a bib reference, \hh{you still need to paraphrase the motivation here.}).
 % 
@@ -181,9 +175,9 @@ Noting that this can produce esimates that are above 10 and below 1, ratings tha
 % \hh{something went wrong in the formula - what are you summing over?}
 
 \subsubsection{Classifier Aggregation}
-After finding the global effects for the games and the users, we're left with residuals for every rating that every user has made. These residuals represent the last of what differentiate the users based on their preferences for the nuances of each game. We need a way to quantify these nuances, and then attempt to model these residual so we can get a better understanding of each individual user. Each game in the dataset can be described by things like what mechanics it has, or what family of game it falls under, when it was published, etc. All in all, there are up to 1,851 different quantifiable ways that were chosed to descibe games. For example, the game Dragonmaster was published in 1981, has a playingtime of 30 minutes, is under the family "Animals: Dragons", falls under the categories "Card Game", "Fantasy Game", is in the subdomain "Strategy Games", uses the mechanic "Trick-taking", and seats 3 or 4 players. Each one of these will be treated as a classifier for the game.
+After finding the global effects for the games and the users, we're left with residuals for every rating that every user has made. These residuals represent the last of what differentiate the users based on their preferences for the nuances of each game. We need a way to quantify these nuances, and then attempt to model these residual so we can get a better understanding of each individual user. Each game in the dataset can be described by things like what mechanics it has, or what family of game it falls under, when it was published, etc. All in all, there are up to 1,851 different quantifiable ways that were chosed to descibe games. For example, the game Dragonmaster was published in 1981, has a playingtime of 30 minutes, is under the family ``Animals: Dragons", falls under the categories ``Card Game", ``Fantasy Game", is in the subdomain ``Strategy Games", uses the mechanic ``Trick-taking", and seats 3 or 4 players. Each one of these will be treated as a classifier for the game.
 
-In order to model the remaining residuals, we'll give each player a score based on how they rated games with similar classifiers; that is, how did they rate games with the "Trick-taking" mechanic, or how did they rate "Card Games"?
+In order to model the remaining residuals, we'll give each player a score based on how they rated games with similar classifiers; that is, how did they rate games with the ``Trick-taking" mechanic, or how did they rate ``Card Games"?
 
 Define $C_{u,z}$ to the be the classifier score for user $u$ for classifier $z$ where $z$ is an index of the 1,851 classifiers. Then:
 
@@ -191,10 +185,10 @@ Define $C_{u,z}$ to the be the classifier score for user $u$ for classifier $z$ 
 C_{u,z} = \frac{\sum \epsilon_{u,i \in z}^{(3)}}{n_{z}}
 \end{equation}
 
-where the sum is over all residuals that belong to a game that can be described by classifier $z$. For example, if the classifier was the mechanic "Trick-taking" and the user was $u = 3$, the classifier score would be the mean of all of the $\epsilon_{3,i}^{(3)}$ for \textit{all} games that the user has rated that have the "Trick-taking" mechanic. If its the case that a user has rated no games with a particular classifier, we'll leave it as an unobserved value. 
+where the sum is over all residuals that belong to a game that can be described by classifier $z$. For example, if the classifier was the mechanic ``Trick-taking" and the user was $u = 3$, the classifier score would be the mean of all of the $\epsilon_{3,i}^{(3)}$ for \textit{all} games that the user has rated that have the ``Trick-taking" mechanic. If its the case that a user has rated no games with a particular classifier, we'll leave it as an unobserved value. 
 
 \subsubsection{k-nearest-neighbors}
-Now we have a few classifier values defined for each user who has rated at least one game. In order to create predictions for other games that the user hasn't played, we'll find the correlation between players based on their classifier values. For each pair of players, the correlation between them can be found by finding all of the classifiers that have scores for both players, and then finding the correlation between those values. To make sure that we don't find high correlations between players who only have very few classifier scores in common, we'll on consider a correlation between players if they have more than 6 common classifier scores.
+Now we have a few classifier values defined for each user who has rated at least one game. In order to create predictions for other games that the user hasn't played, we'll find the correlation between players based on their classifier values. For each pair of players, the correlation between them can be found by finding all of the classifiers that have scores for both players, and then finding the correlation between those values. To make sure that we do not find high correlations between players who only have very few classifier scores in common, we'll on consider a correlation between players if they have more than 6 common classifier scores.
 
 Now to generate an estimate for user $u$ for game $i$, we'll find all of the players who have a correlation value with user $u$ who have also rated game $i$. The rating for game $i$ is then the weighted average of the $k$ most highly correlated (or nearest) neighbors of user $u$.
 
@@ -214,23 +208,31 @@ From what we've produced above, of the estimated rating for user $u$ and game $i
 \subsection{Parameter Optimization \& Selection}
 There are three parameters that the model relies on: The two $\alpha$ values that balance out biasedness in the global effects section, and the $k$ in the k-nearest neighbors portion of the algorithm. The $\alpha$'s will be done globally (that is, every individual will use the same values for $\alpha_{game}$ and $\alpha_{player}$), while the values for $k$ will be done locally (each user will have their own value of $k$). 
 
-\subsubsection{Optimizing $\alpha$}
-To optimize the $\alpha$ values, we'll follow the model fitting procedure up to the point in which the paramter is used, estimate the model parameter using a grid of possible values for the turning parameter, and then find which value for the tuning parameter yields the model parameter estimate which has the lowest root mean square error (RMSE). RMSE is calculated by finding the difference between the rating and the rating that is estimated using only the global effects parameter(s).
+\subsubsection{Optimizing tuning parameters $\alpha$}
+\hh{XXX avoid using symbols without also calling them by their names ... i.e. say tuning parameter $\alpha$ rather than just $\alpha$.}
 
-The first $\alpha$ to be tuned is $\alpha_{game}$. The data is randomly divided into 10 separate sections of roughly equal size. Then for each of the 10 sections, we'll treat the section as a test set and the other 9 to use as a training set. $\widehat{\theta}_g$ is fit first, and then from a grid of $\alpha_{game}$ values (where $\alpha_{game} \in [1,10000]$), a value of $\widehat{\theta}_i$ is produced for each of the $\alpha_{game}$ in the grid. For each of the $\widehat{\theta}_i$ that are estimated, we'll use the section that wasn't in the training set, the RMSE is calculated by:
+To optimize the $\alpha$ values, we follow the model fitting procedure up to the point in which the paramter is used, estimate the model parameter using a grid of possible values for the turning parameter, and then find which value for the tuning parameter yields the model parameter estimate which has the lowest root mean square error (RMSE).
+\hh{XXX back this definition of RMSE up with a formula and move it to the first time where you mention RMSE. }
+RMSE is calculated by finding the difference between the rating and the rating that is estimated using only the global effects parameter(s).
+
+\hh{What does 'the first'meane here? Does it mean that there is a given order, which we have to follow, or did you decide to first tune the game parameter? Does it matter which parameter is tuned first?}
+The first $\alpha$ to be tuned is $\alpha_{game}$.
+\hh{XXX What you are describing here is called ten-fold cross validation. }
+The data is randomly divided into 10 separate sections of roughly equal size. Then for each of the 10 sections, we'll treat the section as a test set and the other 9 to use as a training set. $\widehat{\theta}_g$ is fit first, and then from a grid of $\alpha_{game}$ values (where $\alpha_{game} \in [1,10000]$), a value of $\widehat{\theta}_i$ is produced for each of the $\alpha_{game}$ in the grid. For each of the $\widehat{\theta}_i$ that are estimated, we'll use the section that wasn't in the training set, the RMSE is calculated by:
 \begin{equation}
 \text{RMSE} = \frac{ \sum r_{u,i}^{(1)} - (\theta_g + \theta_i)}{n}
 \end{equation}
 
-where we sum over all rated games in the test set, and $n$ is the number of ratings in the test set. The value of $\alpha_{game}$ that has the lowest RMSE will be used. in figure ~\ref{fig:gamealpha}, we see the optimal value for $\alpha_{game}$ sits in a nice trough, with the minimum at $\alpha_{game} = 1.802303$.
+where we sum over all rated games in the test set, and $n$ is the number of ratings in the test set. The value of $\alpha_{game}$ that has the lowest RMSE will be used. in figure ~\ref{fig:gamealpha}, we see the optimal value for $\alpha_{game}$ sits in a nice trough, with the minimum at $\alpha_{game} = 1.802303$. \hh{XXX do you really need that many significant digits?}
 
 \begin{center}
 \begin{figure}
-<<game_alpha_optim, echo = F, fig.width = 4, fig.height = 4 >>=
+\centering
+<<game_alpha_optim, echo = F, fig.width = 4, fig.height = 4, out.width='0.5\\textwidth'>>=
 load("game_graph")
 game_graph
 @
-\caption{\label{fig:gamealpha} RMSE of candidate $\alpha_{game}$ values.}
+\caption{\label{fig:gamealpha} RMSE of candidate $\alpha_{game}$ values. \hh{XXX there's a typo in the x label }}
 \end{figure}
 \end{center}
 
@@ -242,23 +244,25 @@ After finding the optimal value for $\alpha_{game}$ we can move on to optimizing
 
 Once again, the value of $\alpha_{player}$ with the lowest RMSE will be the value used, which as can be seen in ~\ref{fig:playeralpha} is $\alpha_{player} = 2.022021$.
 \begin{figure}
-<<player_alpha_optim, echo = F, fig.width = 4, fig.height = 4>>=
+\centering
+<<player_alpha_optim, echo = F, fig.width = 4, fig.height = 4, out.width='0.5\\textwidth'>>=
 load("player_graph")
 player_graph
 @
-\caption{\label{fig:playeralpha} RMSE of candidate $\alpha_{player}$ values.}
+\caption{\label{fig:playeralpha} RMSE of candidate $\alpha_{player}$ values. \hh{typo in X}}
 \end{figure}
 
 One may immediately notice that different $\alpha$ candidates have a larger effect on RMSE for players than they have for games. The reason for this is that there are far more ratings for each game than there are for each player. This results in less overfitting for each game and more overfitting for each player, as is seen in the histograms for the number of ratings for each game and player.
 
 \begin{figure}
-<<hists, echo = F, fig.width = 4, fig.height = 4>>=
+\centering
+<<hists, echo = F, fig.width = 4, fig.height = 4, out.width='0.45\\textwidth', fig.show='hold'>>=
 load("game_n_rats")
 load("plyr_n_rats")
 game_n_plot
 plyr_n_plot
 @
-\caption{\label{fig:ratn} Frequency of number of ratings for players and games.}
+\caption{\label{fig:ratn} Frequency of number of ratings for games (left) amd players (right). \hh{A log transformation on the frequencies might be more informative. Make sure to emphasize it, if you show transformed data.}}
 \end{figure}
 
 
@@ -303,7 +307,7 @@ Since we saved the aggregated classifier ratings for the individual user, we can
  
 \def\@biblabel#1{\hfill}
 
-% don't box citations, add space between multiple citations, separate with ;
+% do not box citations, add space between multiple citations, separate with ;
 \def\@citex[#1]#2{\if@filesw\immediate\write\@auxout{\string\citation{#2}}\fi
   \def\@citea{}\@cite{\@for\@citeb:=#2\do
     {\@citea\def\@citea{; }\@ifundefined
