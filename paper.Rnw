@@ -5,6 +5,7 @@
 \usepackage{natbib}
 \usepackage{url}
 \usepackage[normalem]{ulem}
+\usepackage{graphicx}
 
 \newcommand{\hh}[1]{{\color{magenta} #1}}
 \newcommand{\sam}[1]{{\color{blue} #1}}
@@ -17,7 +18,7 @@
 \begin{document}
 \maketitle
 \begin{abstract}
-\hh{You'll need to include an abstract here}
+This project implements portions of Netflix-Prize finalist's algorithms in an attempt to predict how much a person will enjoy board games. Drawing on user's past predictions and data on the specifics of each game, a heirarchical method is used to link a specific user's ratings to ratings from other users, and allowing the use of data on other users who may have not rated any of the same games to predict enjoyment of unrated games. Through this model, we also can derive user-specific scores on how much they like certain aspects of games.
 \end{abstract}
 
 
@@ -83,22 +84,28 @@ xtable(paper_stuff$game_key[,1:6], caption = c("The Game Key gives useful inform
 @
 
 Not all of the data was scraped before creating the applicaiton. Data for 6,088 games was scraped and stored across the four tables. The reason for not scraping all of the data is twofold. First of all, for those 6,088 games there are over 3 million unique ratings. If we were to expand it to all 75,756 games known to BoardGameGeek, then our data set would be crippingly large for all but very high-powered machines. %the small desktop I have to work on. 
-\hh{Instead, we} %Secondly, this will force us to 
-implement a continuous data scraping procedure \hh{and update the recommender model dynamically:} Each time a person uses the app, %all we have to do is 
+Instead, we %Secondly, this will force us to 
+implement a continuous data scraping procedure and update the recommender model dynamically: Each time a person uses the app, %all we have to do is 
 we make sure to check that all of their current information is correct. We look through known ratings and  scrape  their userpage on BoardGameGeek. Based on this, we  revise old ratings and add new ones, as well as check to see that all of the games that this user has rated are included in the database!
 
 \section{Model}
 \subsection{Model Selection}
-\hh{We base our implementation of a recommender system} %To begin implementing such a model, we can look to 
-on two papers  of on one the most famous recommender systems of all: Netflix. In 2006, Netflix offered a \$1 Million prize for an improvement on their algorithm for predicting user rating on movies they had not seen. In 2008, two teams: BigChaos and BellKor (the eventual winner), published papers on their methodology. In the end, these teams ended up taking something of a shotgun approach, using a linear blend of many different models to come up with a single super-model. 
+We base our implementation of a recommender system %To begin implementing such a model, we can look to 
+on two papers which aimed to improve upon one the most famous recommender systems of all: Netflix. In 2006, Netflix offered a \$1 Million prize for an improvement on their algorithm for predicting user rating on movies they had not seen. In 2008, two teams: BigChaos and BellKor (the eventual winner), published papers on their methodology. In the end, these teams ended up taking something of a shotgun approach, using a linear blend of many different models to come up with a single super-model. 
 
-\hh{XXX What is the approach you are taking compared to Netflix? the same? similar? what is different? - One or two sentences here.}
+Our approach is to borrow from a single element of their shotgun modeling. Where they use many different models of many different types, we will choose a simple implementation of a single model. 
 
 There are a few things that make sense to model first. Certain games are more popular than other games, and certain people will naturally be more or less generous than others in their ratings. These two effects are very important to measure, as the first will allow us to provide estimates for people that have rated no games (and therefore we know nothing about), and the second will allow us to fine tune estimates for people who have rated many games. We will implement these in a similar manner to the way that BigChaos implemented the Global Effects model \citep{bigchaos}.
-\hh{XXX the next clause needs an end to be a sentence :)}
-While they implemented 14 steps including Movie Effect, User Effect, and those variables crossed with variables like time since rating, average rating for the movie, production year, standard deviations, as well as others. 
-\hh{XXX explain RMSE; make sure in the next paragraph to always point out what is yours and what is netflix. You know all those distinctions, but for any other reader it is not that obvious.}
-From the RMSE of their probe set, the difference between using only user/movie effcts and using all 14 effects was only .02, a decrease of about 2\%. Noting this negligible increase in accuracy and recognizing my lack of significant computing resources, we will only use user and game effects. \hh{XXX What is your computing power? How much further could you go with (how much?) more? -- How much more accuracy would you hope for with more power? }
+While they implemented 14 steps including Movie Effect, User Effect, and those variables crossed with variables like time since rating, average rating for the movie, production year, standard deviations, as well as others, we'll stick to only using 2 steps: an effect for each game and an effect for each player.
+To compare models to each other we use root mean square error (RMSE). We take our data and split it into a training and test set. The model is fit with the training data, and then we predict the values in the test set. From those values, we can then find the RMSE using the equation below, where $y$ are the observed values from the test set, $\widehat{y}$ are the predicted values from the model built with the training set, and $n$ is the number of observations in the test dataset.
+
+\begin{equation}
+\text{RMSE} = \sqrt{\frac{\sum (y - \widehat{y})^2}{n}}
+\end{equation}
+
+It is important to note that RMSE is a relative measure, and unless you're comparing models on the same data, a similar magnitude of change in RMSE between two different datasets can be meaningless. Therefore when we look at the RMSE results on the Netflix data, we look to the RMSE change as guidance for our model knowing that we may see different RMSE changes when we implement it with different data. 
+% \hh{XXX explain RMSE; make sure in the next paragraph to always point out what is yours and what is netflix. You know all those distinctions, but for any other reader it is not that obvious.}
+From the RMSE of their probe set of the Netflix data, the difference between using only user/movie effcts and using all 14 effects was only .02, a decrease of about 2\%. Noting this negligible increase in accuracy and recognizing my lack of significant computing resources, we will only use user and game effects. My model is fit on my home desktop, which has an Intel Core i7-4770K CPU @ 3.5GHz and 32GB of RAM running 64-bit Windows 8. With the help of additional computing cores, RAM, and better parallelization, we could hope to acheive the 2\% accuracy increase seen in the Netflix Data, but more than likely it wouldn't be worth it, as a quick cost/benefit analysis reveals that I don't need to hit the nail on the head every time, I just need to implement a method that reliably works a good enough percentage of the time. To this coder, a 2\% increase in accuracy just isn't worth the money.
 
 After we fit the general effects, we wish to model the remaining residuals, ideally in some way that gives us informative numeric summaries about the individual users in the process. In addition, we'd also like to compare a users ratings to other users, and hopefully use the behavior of simiar users to predict new ratings for someone. A tempting first step is to, for a particular game, find other people who have rated that game who have rated games that you've rated. Then, you could find people who rated games similarly to you, and use their ratings of the new game as an estimate. This often does not work, as sometimes the number of people who have rated the same games as you can be relatively low, if not 0 (show a graph for this part).
 
@@ -107,12 +114,8 @@ To get around the problem of low crossover in game ratings, we turn to the chara
 We now have a very simple two step model that will allow us to predict ratings for new board games that a person may not have even played! Also, it allows us to rate games that nobody has played before: We can use the overall mean as a starting point, then for an individual player, we can adjust the rating based on their ratings of similar games from other genres.
 
 
-\subsection{Model \hh{Sequence}}
-The specifics of the model follow very closely to those outlined in the Global Effects and knn sections of the BigChaos paper [need bib]. Here, we cover the specifics of both.
-
-Note for editing: I know this model is a mess at the moment, just getting the general ideas down on paper. 
-
-\hh{XXX Describe the sequential nature of the models in the next subsections here.}
+\subsection{Model Sequence}
+The specifics of the model follow very closely to those outlined in the Global Effects and knn sections of the BigChaos paper [need bib]. Here, we cover the specifics of both. We will step through the model in sequence, removing the effects that games and players natrually place on ratings (some games are naturally rated higher than others, some players are more or less generous than others). After removing those larger effects, we'll model the remaining nuance using charachteristics about the games that were rated. From there, we'll strive to find users who have similar tastes in game characteristics, and then finally use that closeness to find ratings for games that a user has not yet rated.
 
 \subsubsection{Global Effects}
 The general idea behind global effects is to account for the natural biases present in particular games or players. For example, we might have two players who both play and enjoy the same game the same amount. However, one person might give this game a score of 10 while the other gives it a score of 9. Despite their overall enjoyment being the same, perhaps the latter player just tends to be a harsher rater in general. The global effect for this person would then be lower than that of the much more cheery fellow who gave the game a 10. Similarly, this effect can be present for games due to any number of reasons.
@@ -175,7 +178,7 @@ Noting that this can produce esimates that are above 10 and below 1, ratings tha
 % \hh{something went wrong in the formula - what are you summing over?}
 
 \subsubsection{Classifier Aggregation}
-After finding the global effects for the games and the users, we're left with residuals for every rating that every user has made. These residuals represent the last of what differentiate the users based on their preferences for the nuances of each game. We need a way to quantify these nuances, and then attempt to model these residual so we can get a better understanding of each individual user. Each game in the dataset can be described by things like what mechanics it has, or what family of game it falls under, when it was published, etc. All in all, there are up to 1,851 different quantifiable ways that were chosed to descibe games. For example, the game Dragonmaster was published in 1981, has a playingtime of 30 minutes, is under the family ``Animals: Dragons", falls under the categories ``Card Game", ``Fantasy Game", is in the subdomain ``Strategy Games", uses the mechanic ``Trick-taking", and seats 3 or 4 players. Each one of these will be treated as a classifier for the game.
+After finding the global effects for the games and the users, we're left with residuals for every rating that every user has made. These residuals represent the last of what differentiate the users based on their preferences for the nuances of each game. We need a way to quantify these nuances, and then attempt to model these residual so we can get a better understanding of each individual user. Each game in the dataset can be described by things like what mechanics it has, or what family of game it falls under, when it was published, etc. All in all, there are up to 1,851 different quantifiable ways that were chosed to descibe games. For example, the game Dragonmaster was published in 1981, has a playingtime of 30 minutes, is under the family ``Animals: Dragons", falls under the categories ``Card Game", ``Fantasy Game", is in the subdomain ``Strategy Games", uses the mechanic ``Trick-taking", and seats 3 or 4 players. Each one of these will be treated as a classifier for the game. A table storing this information by GAME\_ID can be found in Table 2.
 
 In order to model the remaining residuals, we'll give each player a score based on how they rated games with similar classifiers; that is, how did they rate games with the ``Trick-taking" mechanic, or how did they rate ``Card Games"?
 
@@ -209,30 +212,25 @@ From what we've produced above, of the estimated rating for user $u$ and game $i
 There are three parameters that the model relies on: The two $\alpha$ values that balance out biasedness in the global effects section, and the $k$ in the k-nearest neighbors portion of the algorithm. The $\alpha$'s will be done globally (that is, every individual will use the same values for $\alpha_{game}$ and $\alpha_{player}$), while the values for $k$ will be done locally (each user will have their own value of $k$). 
 
 \subsubsection{Optimizing tuning parameters $\alpha$}
-\hh{XXX avoid using symbols without also calling them by their names ... i.e. say tuning parameter $\alpha$ rather than just $\alpha$.}
 
-To optimize the $\alpha$ values, we follow the model fitting procedure up to the point in which the paramter is used, estimate the model parameter using a grid of possible values for the turning parameter, and then find which value for the tuning parameter yields the model parameter estimate which has the lowest root mean square error (RMSE).
-\hh{XXX back this definition of RMSE up with a formula and move it to the first time where you mention RMSE. }
-RMSE is calculated by finding the difference between the rating and the rating that is estimated using only the global effects parameter(s).
+To optimize the tuning parameter $\alpha$ values, we follow the model fitting procedure up to the point in which the paramter is used, estimate the model parameter using a grid of possible values for the turning parameter, and then find which value for the tuning parameter yields the model parameter estimate which has the lowest RMSE (equation (1)).
+RMSE is calculated by finding the difference between the rating and the rating that is estimated using only the global effects parameter(s). Since the game parameter is fit first, we fit the $\alpha$ tuning parameter for the game effect first. After finding an optimal value, we'll then fit the $\alpha$ tuning parameter for the player effect, as the game effect is needed to estimate the player effect.
 
-\hh{What does 'the first'meane here? Does it mean that there is a given order, which we have to follow, or did you decide to first tune the game parameter? Does it matter which parameter is tuned first?}
-The first $\alpha$ to be tuned is $\alpha_{game}$.
-\hh{XXX What you are describing here is called ten-fold cross validation. }
-The data is randomly divided into 10 separate sections of roughly equal size. Then for each of the 10 sections, we'll treat the section as a test set and the other 9 to use as a training set. $\widehat{\theta}_g$ is fit first, and then from a grid of $\alpha_{game}$ values (where $\alpha_{game} \in [1,10000]$), a value of $\widehat{\theta}_i$ is produced for each of the $\alpha_{game}$ in the grid. For each of the $\widehat{\theta}_i$ that are estimated, we'll use the section that wasn't in the training set, the RMSE is calculated by:
+The optimization will use ten-fold cross validation, wherein the data is randomly divided into 10 separate sections of roughly equal size. Then for each of the 10 sections, we'll treat the section as a test set and the other 9 to use as a training set. $\widehat{\theta}_g$ is fit first, and then from a grid of $\alpha_{game}$ values (where $\alpha_{game} \in [1,10000]$), a value of $\widehat{\theta}_i$ is produced for each of the $\alpha_{game}$ in the grid. For each of the $\widehat{\theta}_i$ that are estimated, we'll use the section that wasn't in the training set, the RMSE is calculated by:
 \begin{equation}
 \text{RMSE} = \frac{ \sum r_{u,i}^{(1)} - (\theta_g + \theta_i)}{n}
 \end{equation}
 
-where we sum over all rated games in the test set, and $n$ is the number of ratings in the test set. The value of $\alpha_{game}$ that has the lowest RMSE will be used. in figure ~\ref{fig:gamealpha}, we see the optimal value for $\alpha_{game}$ sits in a nice trough, with the minimum at $\alpha_{game} = 1.802303$. \hh{XXX do you really need that many significant digits?}
+where we sum over all rated games in the test set, and $n$ is the number of ratings in the test set. The value of $\alpha_{game}$ that has the lowest RMSE will be used. in figure ~\ref{fig:gamealpha}, we see the optimal value for $\alpha_{game}$ sits in a nice trough, with the minimum at $\alpha_{game} = 1.802$.
 
 \begin{center}
 \begin{figure}
 \centering
 <<game_alpha_optim, echo = F, fig.width = 4, fig.height = 4, out.width='0.5\\textwidth'>>=
-load("game_graph")
+load("game_graph2")
 game_graph
 @
-\caption{\label{fig:gamealpha} RMSE of candidate $\alpha_{game}$ values. \hh{XXX there's a typo in the x label }}
+\caption{\label{fig:gamealpha} RMSE of candidate $\alpha_{game}$ values.}
 \end{figure}
 \end{center}
 
@@ -242,27 +240,27 @@ After finding the optimal value for $\alpha_{game}$ we can move on to optimizing
 \text{RMSE} = \frac{ \sum r_{u,i}^{(1)} - (\theta_g + \theta_i + \theta_u)}{n}
 \end{equation}
 
-Once again, the value of $\alpha_{player}$ with the lowest RMSE will be the value used, which as can be seen in ~\ref{fig:playeralpha} is $\alpha_{player} = 2.022021$.
+Once again, the value of $\alpha_{player}$ with the lowest RMSE will be the value used, which as can be seen in ~\ref{fig:playeralpha} is $\alpha_{player} = 2.022$.
 \begin{figure}
 \centering
 <<player_alpha_optim, echo = F, fig.width = 4, fig.height = 4, out.width='0.5\\textwidth'>>=
-load("player_graph")
+load("player_graph2")
 player_graph
 @
-\caption{\label{fig:playeralpha} RMSE of candidate $\alpha_{player}$ values. \hh{typo in X}}
+\caption{\label{fig:playeralpha} RMSE of candidate $\alpha_{player}$ values.}
 \end{figure}
 
-One may immediately notice that different $\alpha$ candidates have a larger effect on RMSE for players than they have for games. The reason for this is that there are far more ratings for each game than there are for each player. This results in less overfitting for each game and more overfitting for each player, as is seen in the histograms for the number of ratings for each game and player.
+One may immediately notice that different $\alpha$ candidates have a larger effect on RMSE for players than they have for games. The reason for this is that there are far more ratings for each game than there are for each player. This results in less overfitting for each game and more overfitting for each player, as is seen in the histograms for the log number of ratings for each game and player. Log was used as the number of ratings for player and game is highly right skewed.
 
 \begin{figure}
 \centering
 <<hists, echo = F, fig.width = 4, fig.height = 4, out.width='0.45\\textwidth', fig.show='hold'>>=
-load("game_n_rats")
-load("plyr_n_rats")
+load("game_n_rats2")
+load("plyr_n_rats2")
 game_n_plot
 plyr_n_plot
 @
-\caption{\label{fig:ratn} Frequency of number of ratings for games (left) amd players (right). \hh{A log transformation on the frequencies might be more informative. Make sure to emphasize it, if you show transformed data.}}
+\caption{\label{fig:ratn} Frequency of log number of ratings for games (left) amd players (right).}
 \end{figure}
 
 
@@ -277,20 +275,51 @@ k_plot
 
 
 \section{Technical Implementation}
-** SCREENSHOTS NEEDED **
-
 This algorithm is implemented in R using shiny as a vehhicle for a simple, easy to use user interface. Behind the scenes, the data is stored in a data base with six tables: A player key table, which relates the players information to a unique player userid; A game key table, which relates game information to a unique game id; A ratings table which stores the ratings (a score from 1-10) along with the userid of the person who rated it and the game id which the rating is for; the classifiers table, relates the game id to characteristics about the game that will be useful in the classifier aggregation and k-nearest-neighbors section; the predicted ratings table, which will store predicted ratigs if ratings have already been fit for a particular user; and the aggregated classifier ratings for each user. This data storage will allow for ease of implementation: we only really need the ratings table and the classifier table to do all the work, and the key tables are really only needed to display the inforation to the user in a format which they will understand. 
 
-In an implementation of this, the application will begin by having the user enter the username they've registered on \url{boardgamegeek.com}. Instead of logging the users ratings directly through the application, we will instead leverage the existing infrastructure of boardgame geek. After checking that its a valid username, the application will scour boardgamegeek to see if the database's information is complete: that is, do we have this user's data in the player key? Have they rated games that aren't in our database? Have they rerated games that are in our database? Have they rated games that aren't in our database? .If so, we also need to bring in other users ratings for any games that we may not have had in our database (since a single rating for a game isn't very useful and will greatly skew the results for that game). After this initial step and database update, we can see if they already have saved predicted ratings in the system, and if not, we'll proceed to model fitting.
+In an implementation of this, the application will begin by having the user enter the username they've registered on \url{boardgamegeek.com}. As seen in (~\ref{fig:blanksc}), there is an area to enter the users information in, and a button just below that, when clicked, begins the process.
+\begin{center}
+\begin{figure}
+\includegraphics[scale=0.4]{blank_login.png}
+\caption{\label{fig:blanksc} A blank login screen}
+\end{figure}
+\end{center}
+Instead of logging the users ratings directly through the application, we will instead leverage the existing infrastructure of boardgame geek. After checking that its a valid username, the application will scour boardgamegeek to see if the database's information is complete: that is, do we have this user's data in the player key? Have they rated games that aren't in our database? Have they rerated games that are in our database? Have they rated games that aren't in our database? If so, we also need to bring in other users ratings for any games that we may not have had in our database (since a single rating for a game isn't very useful and will greatly skew the results for that game). After this initial step and database update, we can see if they already have saved predicted ratings in the system, and if not, we'll proceed to model fitting.
 
-We first apply the global effects strategy as descibed in the modling section. The optimization of the $\alpha$ parameters will have occred sometime before this and the algoritm will use use those stored values. A weeky or monthly automatic updaing procedure is used to keep these values up to date as more data comes into the system. From the global effects, we then aggregate those based on the classifier aggregation procedure as described above. These are then stored in the database for future use by the system. After that, before we move onto the k-nearest neighbors implementation, we must first find an optimal value for $k$ using the 10-fold cross validation as described above.
+We first apply the global effects strategy as descibed in the modeling section. The optimization of the $\alpha$ tuning parameters will have occred sometime before this and the algoritm will use use those stored values. A weeky or monthly automatic updaing procedure is to be used to keep these values up to date as more data comes into the system. From the global effects, we then aggregate those based on the classifier aggregation procedure as described above. These are then stored in the database for future use by the system. After that, before we move onto the k-nearest neighbors implementation, we must first find an optimal value for $k$ using the 10-fold cross validation as described above.
 
-Finally, after the k-fold crossvalidation, we're ready to run the other games through the algorithm to get a predicted score. The games that the user has already rated will then be replaced with those ratings, and the full list will be outputted for the user.
+Finally, after the 10-fold cross-validation, we're ready to run the other games through the algorithm to get a predicted score. The games that the user has already rated will then be replaced with those ratings, and the full list will be outputted for the user in the "My Recommendations" Tab, which can be seen in Figure ~\ref{fig:act_use}.
+\begin{figure}
+\includegraphics[scale=0.4]{active_use.png}
+\caption{\label{fig:act_use} The "My Recommendations" tab, populated for user cwmassey.}
+\end{figure}
 
-Since we saved the aggregated classifier ratings for the individual user, we can suggest ways for the user to subset this data. By providing the graph below to the player (GET THE GRAPH WORKING), they can see for themselves their not-necessarily obvious preferences in game family or mechanic. They can then search by their preferred mechanic or theme, and get ratings for games that fit that description. Or the user can simply sort by highest rated. 
+
+Since we saved the aggregated classifier ratings for the individual user, we can suggest ways for the user to subset this data. By providing the graph in Figure ~\ref{fig:subdplot} below to the player they can see for themselves their not-necessarily obvious preferences in game family or mechanic (in this case Subdomain). For this particular user, this would indicate them that they tend to prefer Customizable or Party games rather than Children's Games or Strategy Games. They can then search by their preferred subdomain, and get ratings for games that fit that description. This plot is provided to the user within the "My Category Ratings" tab. The plot for the specific category rating can be chosen by the user, so the user can select from Category, Family, Mechanic, Subdomain, Number of Players, Playing Time, or Year Published.
+
+\begin{figure}
+<<subdom_plot, echo = FALSE, fig.width = 4, fig.height = 4, out.width='0.5\\textwidth'>>=
+load("classifiers_plot")
+out
+@
+\caption{\label{fig:subdplot} A player preference plot for subdomains for the user cwmassey.}
+\end{figure}
+
+\begin{figure}
+\includegraphics[scale=0.4]{cat_ratings.png}
+\caption{\label{fig:cat_rat_tab} The "My Category Ratings" tab.}
+\end{figure}
+
+If a user wants to rate a new game, they have to go back to BoardGameGeek and rate games there. The app will then need to be restarted, which will pull the new rating, and update the database. 
 
 \section{Conclusion}
+While the result was not as smooth as hoped, the Netflix recommender system made an excellent base off of which to build a recommender system for board games. It would not be too much of a stretch to imagine that, if you had a reasonable amount of user rating data about something, and you had enough descriptive data about that thing, that a similar implementation would be of great use there as well.
 
+There are a few directions that this project is naturally headed in. The first of which is to speed up the prediction generating process. Currently, each time a user starts the app with new data, the new data is fetched and the whole model is fit again, including generating a truly massive correlation matrix. Instead of doing this each time a person logs in, it may be more advantageous to fit the correlation matrix daily, and then only update the global effects portion of the model for each user, as that portion is relatively snappy. Hopefully this would bring the fitting time down from 20 minutes to a matter of seconds. Additionally, we don't have the full data that is contained on BoardGameGeek. There is much more data to scrape than time for this paper allowed, so going and continually updating the database would be advantageous.
+
+Another possible step is to generalize the whole recommendation system procedure, so that if you had rating and classifing information on any manner of subjects, you could implement a recommendation system with little to no effort. This could have a whole host of applications from what restaurants you might enjoy to what books you might like to read. 
+
+Finally, there are hosts of other recommender systems out there. Augmenting this approach with additional models as done in the Netflix Prize papers would undoubably be a logical step forward for this kind of modeling. 
 
 
 \bibliographystyle{asa}
