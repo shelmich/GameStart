@@ -28,7 +28,7 @@ load("paper_stuff")
 @
 \section{Introduction}
 
-Board gaming, while being very popular among children, is a niche hobby beyond adolescence. Everyone may have grown up with Monopoly, but most people may have never heard of Citadels or Twilight Imperium. And as such, board gaming is a very difficult hobby to break into. ``Gateway Games" such as Settlers of Catan or Ticket to Ride offer a gradual transition between the ultra-popular and mechanics-lite games like monopoly, to more rules-heavy games like Puerto Rico. For most people, the difficult part of the transition is actually finding new games to play. New games are often expensive for people who may be apprehensive about trying new games (a copy of Settlers of Catan goes for about \$40 on Amazon). For this reason, a method to recommend games to people would be invaluable. 
+Board gaming, while being very popular among children, is a niche hobby beyond adolescence. Everyone may have grown up with Monopoly, but most people may have never heard of Citadels or Twilight Imperium. And as such, board gaming is a very difficult hobby to break into. ``Gateway Games" such as Settlers of Catan or Ticket to Ride offer a gradual transition between the ultra-popular and mechanics-lite games  like monopoly, to more rules-heavy games like Puerto Rico. For most people, the difficult part of the transition is actually finding new games to play. New games are often expensive for people who may be apprehensive about trying new games (a copy of Settlers of Catan goes for about \$40 on Amazon). For this reason, a method to recommend games to people would be invaluable. 
 
 A few methods of varying usefulness already exist. Boardgamegeek.com, a popular site among frequent board gamers, has a recommendation system that allows users to find a particular game they like, and then from there it will recommend more games that a person may like. A pretty thorough analysis of it (and its issues) can be found at \url{http://boardgamegeek.com/wiki/page/Game_Recommendation_Algorithm}. The bigger issue is that it cannot be tailored to an individual. You, an individual user, may have different preferences than the user base average, and it might be more useful to tailor recommendations to the individual. 
 
@@ -64,7 +64,7 @@ Subdomain & More general than Category, but loosely bins games\\
 \caption{\label{tab:categories} Overview of the  relevant characteristics of board games considered in this project.}
 \end{table}
 
-\hh{Refer to table~\ref{tab:classifiers} somewhere in the text, add a label to the ratings table as well.}
+% \hh{Refer to table~\ref{tab:classifiers} somewhere in the text, add a label to the ratings table as well.}
 <<classifiers, echo = FALSE, results = 'asis'>>=
 print(xtable(paper_stuff$classifiers, caption = c("Example lines of classifiers data, as seen in Database", "Classifiers Table"), label="tab:classifiers"), include.rownames =FALSE )
 @
@@ -183,7 +183,7 @@ After finding the global effects for the games and the users, we're left with re
 
 In order to model the remaining residuals, we'll give each player a score based on how they rated games with similar classifiers; that is, how did they rate games with the ``Trick-taking" mechanic, or how did they rate ``Card Games"?
 
-Define $C_{u,z}$ to the be the classifier score for user $u$ for classifier $z$ where $z$ is an index of the 1,851 classifiers. Then: \hh{XXX something went wrong with the formula ... not sure how to fix it}
+Define $C_{u,z}$ to the be the classifier score for user $u$ for classifier $z$ where $z$ is an index of the 1,851 classifiers. Then:
 
 \begin{equation}
 C_{u,z} = \frac{\sum \epsilon_{u,i \in z}^{(3)}}{n_{z}}
@@ -196,15 +196,14 @@ Now we have a few classifier values defined for each user who has rated at least
 
 Now to generate an estimate for user $u$ for game $i$, we'll find all of the players who have a correlation value with user $u$ who have also rated game $i$. The rating for game $i$ is then the weighted average of the $k$ most highly correlated (or nearest) neighbors of user $u$.
 
-\hh{XXX why do those weights make sense? aren't those weights tilted towards players who are negatively correlated? are there any? (then it's not  a practical problem, even though still a theoretical one) just check that it is not supposed to be $1 - \rho$ in the denominator. I'm pretty sure that's what's it supposed to be.}
-The weights for this will be $(1 + \rho_{u,k})^{-1}$ where $\rho_{u,k}$ is the correlation between user $u$ and user $k$. The number of neighbors to use $k$ will be determined by cross-validation on a user-to-user basis. In the end $z_{u,i}$ will be the \hh{weighted average of the} k-nearest-neighbors \hh{scores} for user $u$ and game $i$, as given in the equation below (where $u_{[j]}$ is the user with the $j^{\text{th}}$ highest correlation between themselves and user $u$):
+The weights for this will be $(1 - \rho_{u,k})^{-1}$ where $\rho_{u,k}$ is the correlation between user $u$ and user $k$. The number of neighbors to use $k$ will be determined by cross-validation on a user-to-user basis. In the end $z_{u,i}$ will be the weighted average of the k-nearest-neighbors scores for user $u$ and game $i$, as given in the equation below (where $u_{[j]}$ is the user with the $j^{\text{th}}$ highest correlation between themselves and user $u$):
 
 \begin{equation}
-z_{u,i} = \frac{\sum_{j = 1}^{k} \epsilon_{u_{[j]},i}^{(3)} \cdot \frac{1}{1 + \rho_{u,u_{[j]}}}}{\sum_{j = 1}^{k}\frac{1}{1 + \rho_{u,u_{[j]}}}}
+z_{u,i} = \frac{\sum_{j = 1}^{k} \epsilon_{u_{[j]},i}^{(3)} \cdot \frac{1}{1 - \rho_{u,u_{[j]}}}}{\sum_{j = 1}^{k}\frac{1}{1 - \rho_{u,u_{[j]}}}}
 \end{equation}
 
 \subsubsection{Back to Rating}
-From what we've produced above \hh{XXX to be more specific use the relevant equation numbers that are involved }, of the estimated rating for user $u$ and game $i$ is given by:
+From what we've produced above in equations (2)-(9), of the estimated rating for user $u$ and game $i$ is given by:
 
 \begin{equation}
 \widehat{r}_{u,i} = \widehat{\theta}_g + \widehat{\theta}_{i} + \widehat{\theta}_{u} + z_{u,i}
@@ -218,9 +217,9 @@ There are three parameters that the model relies on: The two $\alpha$ values tha
 To optimize the tuning parameter $\alpha$ values, we follow the model fitting procedure up to the point in which the parameter is used, estimate the model parameter using a grid of possible values for the turning parameter, and then find which value for the tuning parameter yields the model parameter estimate which has the lowest RMSE (equation \ref{eq:rmse}).
 RMSE is calculated by finding the difference between the rating and the rating that is estimated using only the global effects parameter(s). Since the game parameter is fit first, we fit the $\alpha$ tuning parameter for the game effect first. After finding an optimal value, we'll then fit the $\alpha$ tuning parameter for the player effect, as the game effect is needed to estimate the player effect.
 
-The optimization will use ten-fold cross validation, wherein the data is randomly divided into 10 separate sections of roughly equal size. Then for each of the 10 sections, we'll treat the section as a test set and the other 9 to use as a training set. $\widehat{\theta}_g$ is fit first, and then from a grid of $\alpha_{game}$ values (where $\alpha_{game} \in [1,10000]$), a value of $\widehat{\theta}_i$ is produced for each of the $\alpha_{game}$ in the grid. For each of the $\widehat{\theta}_i$ that are estimated, we'll use the section that wasn't in the training set, the RMSE is calculated here by: \hh{XXX I am not sure this really is the RMSE - where did the squaring and the square rooting go?}
+The optimization will use ten-fold cross validation, wherein the data is randomly divided into 10 separate sections of roughly equal size. Then for each of the 10 sections, we'll treat the section as a test set and the other 9 to use as a training set. $\widehat{\theta}_g$ is fit first, and then from a grid of $\alpha_{game}$ values (where $\alpha_{game} \in [1,10000]$), a value of $\widehat{\theta}_i$ is produced for each of the $\alpha_{game}$ in the grid. For each of the $\widehat{\theta}_i$ that are estimated, we'll use the section that wasn't in the training set, the RMSE is calculated here by:
 \begin{equation}
-\text{RMSE} = \frac{ \sum r_{u,i}^{(1)} - (\theta_g + \theta_i)}{n}
+\text{RMSE} = \left(\frac{ \sum (r_{u,i}^{(1)} - (\theta_g + \theta_i))^2}{n}\right)^{\frac{1}{2}}
 \end{equation}
 
 where we sum over all rated games in the test set, and $n$ is the number of ratings in the test set. The value of $\alpha_{game}$ that has the lowest RMSE will be used. in figure~\ref{fig:gamealpha}, we see the optimal value for $\alpha_{game}$ sits in a nice trough, with the minimum at $\alpha_{game} = 1.802$.
@@ -269,13 +268,13 @@ plyr_n_plot
 load("k_plot")
 k_plot
 @
-\caption{\label{fig:k} \hh{You still need a caption here.}}
+\caption{\label{fig:k} RMSE of candidate k values. For this player, 18 is the optimal value.}
 \end{figure}
 
 
 
-\section{Technical Implementation} \hh{give references for R (to be a nice R user), shiny, and the other packages that you are using. citation() and citation("packagename") makes your life easy with that.}
-This algorithm is implemented in R  using shiny as a vehicle for a simple, easy to use user interface. Behind the scenes, the data is stored in a data base with six tables: A player key table, which relates the players information to a unique player userid; A game key table, which relates game information to a unique game id; A ratings table which stores the ratings (a score from 1-10) along with the userid of the person who rated it and the game id which the rating is for; the classifiers table, relates the game id to characteristics about the game that will be useful in the classifier aggregation and k-nearest-neighbors section; the predicted ratings table, which will store predicted ratings if ratings have already been fit for a particular user; and the aggregated classifier ratings for each user. This data storage will allow for ease of implementation: we only really need the ratings table and the classifier table to do all the work, and the key tables are really only needed to display the information to the user in a format which they will understand. 
+\section{Technical Implementation} 
+This algorithm is implemented in R \citep{rcite}  using shiny \citep{shiny} as a vehicle for a simple, easy to use user interface. Additionally, the packages RSQLite \citep{RSQLite}, dplyr \citep{dplyr}, and magrittr \citep{magrittr} were used. Behind the scenes, the data is stored in a data base with six tables: A player key table, which relates the players information to a unique player userid; A game key table, which relates game information to a unique game id; A ratings table which stores the ratings (a score from 1-10) along with the userid of the person who rated it and the game id which the rating is for; the classifiers table, relates the game id to characteristics about the game that will be useful in the classifier aggregation and k-nearest-neighbors section; the predicted ratings table, which will store predicted ratings if ratings have already been fit for a particular user; and the aggregated classifier ratings for each user. This data storage will allow for ease of implementation: we only really need the ratings table and the classifier table to do all the work, and the key tables are really only needed to display the information to the user in a format which they will understand. 
 
 In an implementation of this, the application will begin by having the user enter the username they've registered on \url{boardgamegeek.com}. As seen in (~\ref{fig:blanksc}), there is an area to enter the users information in, and a button just below that, when clicked, begins the process.
 \begin{center}
@@ -302,7 +301,7 @@ Since we saved the aggregated classifier ratings for the individual user, we can
 load("classifiers_plot")
 out
 @
-\caption{\label{fig:subdplot} A player preference plot for subdomains for the user cwmassey.  \hh{XXX fix the y label, if showing it}}
+\caption{\label{fig:subdplot} A player preference plot for subdomains for the user cwmassey.}
 \end{figure}
 
 \begin{figure}\centering
