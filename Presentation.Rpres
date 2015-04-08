@@ -1,0 +1,321 @@
+Board Game Recommendation
+========================================================
+author: Sam Helmich
+date: 4/14/2015
+transition: rotate
+
+
+Outline
+========================================================
+- Data
+  - Scraping
+  - Storage
+- Model
+  - Motivation
+  - Fit
+  - Parameter Optimization
+- Implementation
+
+Data
+========================================================
+- from `boardgamegeek.com`
+- has data on over 76,000 board games and expansions
+
+- Each game has specifics about the game:
+  - How many players?
+  - How long does a game take?
+  - When was it made?
+  
+Data
+========================================================
+![Example Game](Presentation-figure/game_example.jpg) 
+
+
+
+Data
+========================================================
+![Example Game](Presentation-figure/game_example_2.jpg)
+
+
+Data
+========================================================
+- We'll use:
+ - Subdomain
+ - Category
+ - Mechanic
+ - Family (An ultra-broad category)
+
+Data
+========================================================
+For each game, we'll also retreive players ratings for each game
+
+![Example Ratings](Presentation-figure/ratings_example.jpg)
+
+Data
+========================================================
+The data is stored across four tables:
+Game Key
+```{r_loader_1, echo = FALSE}
+library(knitr)
+load("paper_stuff")
+
+kable(paper_stuff$game_key[1:8,1:6])
+```
+
+Data
+========================================================
+The data is stored across four tables:
+Player Key
+```{r_loader_2, echo = FALSE}
+library(knitr)
+load("paper_stuff")
+
+kable(paper_stuff$player_key)
+```
+
+Data
+========================================================
+The data is stored across four tables:
+Ratings
+```{r_loader_3, echo = FALSE}
+library(knitr)
+load("paper_stuff")
+
+kable(paper_stuff$ratings)
+```
+
+Data
+========================================================
+The data is stored across four tables:
+Classifiers
+```{r_loader_4, echo = FALSE}
+library(knitr)
+load("paper_stuff")
+
+kable(paper_stuff$classifiers)
+```
+
+
+Data
+========================================================
+Overall, we have data on over 6,000 games with a total of over 3 million unique ratings
+
+
+
+Model - Motivation
+========================================================
+For guidance we looked to the Netflix Challenge
+- $1 Million prize for improving upon Cinematch (Netflix current recommender)
+- 2 Teams came out ahead:
+  - BigChaos
+  - BellKor
+- Both approaches involved a shotgun of models
+- We used one of these model "pellets"
+
+Model - Motivation 
+========================================================
+- Want to account for natural "biases"
+  - Some people tend to be generous or cynical
+  - Certain games garner higher or lower ratings
+- Global Effects Procedure
+  - Iteratively:
+      - Estimate effect
+      - Remove effect
+      - Produce residuals
+
+Model - Motivation
+========================================================
+BigChaos implemented with 14 iterative steps:
+  - included things like:
+      - Movie Effect
+      - User Efect
+      - Standard Deviations
+      - Cross effects
+      
+      
+We'll only use 2
+  - Game Effect
+  - Player Effect
+
+Model - Motivation
+========================================================
+Error measure: Root Mean Square Error (RMSE)
+
+Over the 14 iterative steps, the RMSE only improved by 2% from the 2nd to the 14th
+
+So the difference between using 2 and 14 on our data is probably not ultra important
+
+Model - Motivation
+========================================================
+After Global Effects, we're left with a residual for each rating.
+
+From here, we'll kill two birds with one stone:
+- How do we produce summaries for each user?
+- How do we provide ratings based on others who may have rated no games in common?
+
+We do this by combining the residuals with the classifiers for each game, based on how "close" player are to each other
+
+
+Model - Fit
+========================================================
+We'll begin by considering the overall ratings (minus the overall mean) and then removing the global effect for games:
+
+MathJax equations go here (2) and (3) from paper
+
+Model - Fit
+========================================================
+To estimate theta_g, we'll use a mean-like estimate, with a parameter alpha-game to control for overfitting.
+
+Mathjax equation (4) goes here
+
+
+Model - Fit
+========================================================
+We'll then treat the residuals from the game effect step as our response, and then fit the global effect for games:
+
+Mathjax eqauation (5)
+
+
+Model - Fit
+========================================================
+theta_u is again fit like a mean, with a tuning parameter to guard against overfitting
+
+Mathjax equation (6)
+
+
+Model - Fit
+========================================================
+Classifier Aggregation
+```{r_loader_5, echo = FALSE}
+library(knitr)
+load("paper_stuff")
+
+kable(paper_stuff$classifiers)
+```
+
+
+Model - Fit
+========================================================
+
+- For each Classifier/Value combination, give each player a score
+
+- Equation (7) from paper
+
+Model - Fit
+========================================================
+k-nearest-neighbors
+
+- We have scores for many categories for many users
+
+- For a given user, find correlation between all other users
+
+- For a users's unrated games, find k highest correlated players who have played a particular game
+
+- Weight: $$\Huge z_{u,i} = \frac{\sum_{j = 1}^{k} \epsilon_{u_{[j]},i}^{(3)} \cdot \frac{1}{1 - \rho_{u,u_{[j]}}}}{\sum_{j = 1}^{k}\frac{1}{1 - \rho_{u,u_{[j]}}}}$$
+
+Model - Fit
+========================================================
+
+For each game, we reverse model steps and get rating using
+
+Equation (9)
+
+
+Model - Parameter Optimization
+========================================================
+We have 3 parameters to tune
+- $\Huge \alpha_{game}$ , $\Huge \alpha_{player}$ , $\Huge k$
+
+- $\Huge \alpha$ values will be tuned "globally"
+
+- $\Huge k$ will be tuned "locally"
+
+
+Model - Parameter Optimization
+========================================================
+Optimizing $\Huge \alpha_{game}$
+
+- 10 Fold Cross-Validation
+
+- Follow model fit procedure up to fitting $\Huge \theta_{i}$
+
+- Choose a grid of $\Huge \alpha_{game}$ values in $\Huge [0, 10000]$
+
+- Find RMSE for each:
+
+$$\LARGE \text{RMSE} = \left(\frac{ \sum (r_{u,i}^{(1)} - (\theta_g + \theta_i))^2}{n}\right)^{\frac{1}{2}}$$
+
+Model - Parameter Optimization
+========================================================
+```{r_game_graph, echo = FALSE}
+load("game_graph2")
+game_graph
+```
+***
+$\LARGE \alpha_{game} = 1.802$ is optimal 
+
+Model - Parameter Optimization
+========================================================
+Optimizing $\Huge \alpha_{player}$
+
+- 10 Fold Cross-Validation
+
+- Follow model fit procedure up to fitting $\Huge \theta_{u}$
+
+- Choose a grid of $\Huge \alpha_{game}$ values in $\Huge [0, 10000]$
+
+- Find RMSE for each:
+
+$$\LARGE\text{RMSE} = \left(\frac{ \sum (r_{u,i}^{(1)} - (\theta_g + \theta_i + \theta_u))^2}{n}\right)^{\frac{1}{2}}$$
+
+Model - Parameter Optimization
+========================================================
+```{r_player_graph, echo = FALSE}
+load("player_graph2")
+player_graph
+```
+***
+$\LARGE \alpha_{game} = 2.022$ is optimal
+
+
+Model - Parameter Optimization
+========================================================
+```{r_game_hist, echo = F}
+load("game_n_rats2")
+game_n_plot
+```
+***
+```{r_plyr_hist, echo = F}
+load("plyr_n_rats2")
+plyr_n_plot
+```
+
+Model - Parameter Optimization
+========================================================
+Optimizing $\Huge k$:
+
+- Optimize for each player each time the model is run
+
+- 10 Fold Cross-Validation
+
+- Choose integer grid of $\LARGE k$ values from 1 to 50
+
+- Find RMSE for each $\LARGE k$ value
+
+- Choose $\LARGE k$ with smallest RMSE
+
+Model - Parameter Optimization
+========================================================
+```{r_k_plot, echo =FALSE}
+load("k_plot")
+k_plot
+```
+***
+For this player $\LARGE k = 18$ is optimal
+
+
+Technical Implementation
+========================================================
+
+Demonstration!
+
