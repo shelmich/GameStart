@@ -39,7 +39,7 @@ In this paper, we seek to build a system that recommends board games to users ba
 
 \section{Data Collection}
 
-For data, we turn to \url{boardgamegeek.com}, a website that holds information, ratings, and reviews for over 75,000 games. Users can create an account and then rate games they've played as well as keep an inventory of games they own. All of this information is accessible and scrape-able, and is the data that drives our analysis.
+For data, we turn to \url{boardgamegeek.com}, a website that holds information, ratings, and reviews for over 75,000 games. Users can create an account and then rate games they have  played as well as keep an inventory of games they own. All of this information is accessible and scrape-able, and is the data that drives our analysis.
 
 There are two types of particular information that we are interested in: user ratings of the games and characteristics about the game (referred to as classifiers in the modeling section). The characteristics we're interested in fall into these categories as outlined in table~\ref{tab:categories}.
 
@@ -108,9 +108,9 @@ It is important to note that RMSE is a relative measure, and unless we are compa
 % \hh{XXX explain RMSE; make sure in the next paragraph to always point out what is yours and what is netflix. You know all those distinctions, but for any other reader it is not that obvious.}
 From the RMSE of the probe set of the Netflix data, the difference between using only user/movie effects and using all 14 effects was .02, a decrease of about 2\%. Noting this negligible increase in accuracy and recognizing my lack of significant computing resources, we  only use user and game effects. This model is fit on my home desktop, which has an Intel Core i7-4770K CPU @ 3.5GHz and 32GB of RAM running 64-bit Windows 8. With the help of additional computing cores, RAM, and better parallelization, we could hope to achieve the 2\% accuracy increase seen in the Netflix Data, but more than likely it would not   be worth it, as a quick cost/benefit analysis reveals that I do not   need to hit the nail on the head every time, I just need to implement a method that reliably works a good enough percentage of the time. To this coder, a 2\% increase in accuracy just is not   worth the money.
 
-After we fit the general effects, we wish to model the remaining residuals, ideally in some way that gives us informative numeric summaries about the individual users in the process. In addition, we'd also like to compare a users ratings to other users, and hopefully use the behavior of similar users to predict new ratings for someone. A tempting first step is to, for a particular game, find other people who have rated that game who have rated games that you've rated. Then, you could find people who rated games similarly to you, and use their ratings of the new game as an estimate. This often does not work, as sometimes the number of people who have rated the same games as you can be relatively low, if not 0 (show a graph for this part).
+After we fit the general effects, we wish to model the remaining residuals, ideally in some way that gives us informative numeric summaries about the individual users in the process. In addition, we'd also like to compare a users ratings to other users, and hopefully use the behavior of similar users to predict new ratings for someone. A tempting first step is to, for a particular game, find other people who have rated that game who have rated games that you have  rated. Then, you could find people who rated games similarly to you, and use their ratings of the new game as an estimate. This often does not work, as sometimes the number of people who have rated the same games as you can be relatively low, if not 0 (show a graph for this part).
 
-To get around the problem of low crossover in game ratings, we turn to the characteristics of the games themselves. This kills two birds with one stone. We  create, for each user, a rating for each game mechanic and genre. Then, since there are so many mechanics and genres of game, a player only needs to rate a small, albeit diverse set of games before we can correlate that player's habits with other players, even if they've never played any of the same games! Then we can use those to filter rating results, as we   know what board game mechanics that a particular player  enjoy.
+To get around the problem of low crossover in game ratings, we turn to the characteristics of the games themselves. This kills two birds with one stone. We  create, for each user, a rating for each game mechanic and genre. Then, since there are so many mechanics and genres of game, a player only needs to rate a small, albeit diverse set of games before we can correlate that player's habits with other players, even if they have  never played any of the same games! Then we can use those to filter rating results, as we   know what board game mechanics that a particular player  enjoy.
 
 We now have a very simple two step model that  allows us to predict ratings for new board games that a person may not have even played! Also, it allows us to rate games that nobody has played before: We can use the overall mean as a starting point, then for an individual player, we can adjust the rating based on their ratings of similar games from other genres.
 
@@ -203,7 +203,7 @@ z_{u,i} = \frac{\sum_{j = 1}^{k} \epsilon_{u_{[j]},i}^{(3)} \cdot \frac{1}{1 - \
 \end{equation}
 
 \subsubsection{Back to Rating}
-From what we've produced above in equations (2)-(9), of the estimated rating for user $u$ and game $i$ is given by:
+From what we have  produced above in equations (2)-(9), of the estimated rating for user $u$ and game $i$ is given by:
 
 \begin{equation}
 \widehat{r}_{u,i} = \widehat{\theta}_g + \widehat{\theta}_{i} + \widehat{\theta}_{u} + z_{u,i}
@@ -276,7 +276,7 @@ k_plot
 \section{Technical Implementation} 
 This algorithm is implemented in R \citep{rcite}  using shiny \citep{shiny} as a vehicle for a simple, easy to use user interface. Additionally, the packages RSQLite \citep{RSQLite}, dplyr \citep{dplyr}, and magrittr \citep{magrittr} were used. Behind the scenes, the data is stored in a data base with six tables: A player key table, which relates the players information to a unique player userid; A game key table, which relates game information to a unique game id; A ratings table which stores the ratings (a score from 1-10) along with the userid of the person who rated it and the game id which the rating is for; the classifiers table, relates the game id to characteristics about the game that is useful in the classifier aggregation and k-nearest-neighbors section; the predicted ratings table, which  stores predicted ratings if ratings have already been fit for a particular user; and the aggregated classifier ratings for each user. This data storage  allows for ease of implementation: we only really need the ratings table and the classifier table to do all the work, and the key tables are really only needed to display the information to the user in a format which they  understand. 
 
-In an implementation of this, the application  begins by having the user enter the username they've registered on \url{boardgamegeek.com}. As seen in (~\ref{fig:blanksc}), there is an area to enter the users information in, and a button just below that, when clicked, begins the process.
+In an implementation of this, the application  begins by having the user enter the username they have  registered on \url{boardgamegeek.com}. As seen in (~\ref{fig:blanksc}), there is an area to enter the users information in, and a button just below that, when clicked, begins the process.
 \begin{center}
 \begin{figure}\centering
 \includegraphics[scale=0.4]{blank_login.png}
